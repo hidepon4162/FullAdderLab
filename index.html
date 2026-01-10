@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>全加算回路シミュレータ（Full Adder）</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #101a30;
+        --text: #e8eefc;
+        --muted: #b7c3e6;
+        --line: rgba(255, 255, 255, 0.12);
+        --ok: #7ee787;
+        --accent: #8ab4ff;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+          "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+        background: radial-gradient(1000px 600px at 20% 0%, #17264a, var(--bg));
+        color: var(--text);
+      }
+      header {
+        padding: 20px 16px 8px;
+        max-width: 980px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 6px;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 12px 16px 28px;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 860px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: rgba(16, 26, 48, 0.88);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        backdrop-filter: blur(8px);
+      }
+      .card h2 {
+        font-size: 16px;
+        margin: 0 0 10px;
+      }
+
+      .io {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        align-items: start;
+      }
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.12);
+      }
+      .box h3 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+      }
+
+      .switchRow {
+        display: grid;
+        gap: 10px;
+      }
+      .sw {
+        display: grid;
+        grid-template-columns: 40px 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .sw label {
+        font-size: 14px;
+        color: var(--text);
+      }
+
+      .pill {
+        width: 40px;
+        height: 26px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        position: relative;
+        cursor: pointer;
+        border: 1px solid var(--line);
+      }
+      .pill::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.75);
+        transition: transform 0.18s ease;
+      }
+      input[type="checkbox"] {
+        display: none;
+      }
+      input[type="checkbox"]:checked + .pill {
+        background: rgba(138, 180, 255, 0.22);
+        border-color: rgba(138, 180, 255, 0.45);
+      }
+      input[type="checkbox"]:checked + .pill::after {
+        transform: translateX(14px);
+        background: var(--accent);
+      }
+
+      .outGrid {
+        display: grid;
+        gap: 10px;
+      }
+      .out {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .badge {
+        min-width: 44px;
+        text-align: center;
+        padding: 6px 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        border: 1px solid var(--line);
+        background: rgba(0, 0, 0, 0.18);
+      }
+      .badge.on {
+        border-color: rgba(126, 231, 135, 0.55);
+        background: rgba(126, 231, 135, 0.14);
+        color: var(--ok);
+      }
+      .badge.off {
+        border-color: rgba(255, 255, 255, 0.18);
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .kv {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px dashed rgba(255, 255, 255, 0.16);
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        color: #eaf2ff;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(0, 0, 0, 0.12);
+        font-size: 13px;
+      }
+      th,
+      td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--line);
+        text-align: center;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      tr.active td {
+        background: rgba(138, 180, 255, 0.12);
+        border-bottom-color: rgba(138, 180, 255, 0.25);
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .seg {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.12);
+      }
+      .seg button {
+        appearance: none;
+        border: 0;
+        padding: 10px 8px;
+        font-size: 13px;
+        color: var(--muted);
+        background: transparent;
+        cursor: pointer;
+      }
+      .seg button.active {
+        color: var(--text);
+        background: rgba(138, 180, 255, 0.14);
+      }
+
+      .expr {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+      .expr .line {
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .expr b {
+        color: var(--text);
+        font-weight: 700;
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      @media (max-width: 520px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .mini {
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .mini h4 {
+        margin: 0 0 6px;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .mini .kv2 {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 6px 0;
+        color: var(--muted);
+        font-size: 13px;
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+      }
+      .mini .kv2:last-child {
+        border-bottom: 0;
+      }
+
+      .footerNote {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.7;
+      }
+
+      /* ---- 図（SVG） ---- */
+      .diagramWrap {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.1);
+        padding: 10px;
+        margin-bottom: 12px;
+        overflow: hidden;
+      }
+      .diagramTitle {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin: 0 0 8px;
+        gap: 10px;
+      }
+      .diagramTitle h3 {
+        margin: 0;
+        font-size: 14px;
+      }
+      .diagramTitle .hint {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      svg text {
+        fill: rgba(232, 238, 252, 0.92);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+          "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      }
+      .blk {
+        fill: rgba(16, 26, 48, 0.92);
+        stroke: rgba(255, 255, 255, 0.18);
+        stroke-width: 1.2;
+      }
+      .lbl {
+        fill: rgba(183, 195, 230, 0.95);
+        font-size: 12px;
+      }
+      .wire {
+        stroke: rgba(255, 255, 255, 0.28);
+        stroke-width: 3.2;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .wire.on {
+        stroke: rgba(138, 180, 255, 0.95);
+        filter: drop-shadow(0 0 6px rgba(138, 180, 255, 0.55));
+      }
+      .wire.carry.on {
+        stroke: rgba(126, 231, 135, 0.95);
+        filter: drop-shadow(0 0 7px rgba(126, 231, 135, 0.55));
+      }
+      .dot {
+        fill: rgba(255, 255, 255, 0.35);
+      }
+      .dot.on {
+        fill: rgba(138, 180, 255, 0.95);
+        filter: drop-shadow(0 0 6px rgba(138, 180, 255, 0.55));
+      }
+      .dot.carry.on {
+        fill: rgba(126, 231, 135, 0.95);
+        filter: drop-shadow(0 0 7px rgba(126, 231, 135, 0.55));
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>全加算回路シミュレータ（Full Adder）</h1>
+      <p>
+        入力 A, B, Cin（キャリー入力）から、Sum と
+        Cout（キャリー出力）を計算します。<br />
+        「半加算器2段（HA+HA+OR）」の配線図では、信号が 1 の線だけ光ります。
+      </p>
+    </header>
+
+    <main>
+      <!-- 左：入出力 -->
+      <section class="card">
+        <h2>入出力</h2>
+
+        <div class="toolbar">
+          <div class="mini">
+            <div
+              style="color: var(--muted); font-size: 12.5px; margin-bottom: 6px"
+            >
+              表示モード
+            </div>
+            <div class="seg" role="tablist" aria-label="表示モード切替">
+              <button
+                id="btnStd"
+                class="active"
+                type="button"
+                role="tab"
+                aria-selected="true"
+              >
+                標準式
+              </button>
+              <button id="btnHA" type="button" role="tab" aria-selected="false">
+                HA + HA + OR
+              </button>
+            </div>
+          </div>
+          <div class="mini">
+            <div
+              style="color: var(--muted); font-size: 12.5px; margin-bottom: 6px"
+            >
+              現在の入力
+            </div>
+            <div><code id="binIn">A B Cin = 0 0 0</code></div>
+            <div
+              style="margin-top: 6px; color: var(--muted); font-size: 12.5px"
+            >
+              合計：<code id="decSum">0</code>
+            </div>
+          </div>
+        </div>
+
+        <div class="io">
+          <div class="box">
+            <h3>入力</h3>
+            <div class="switchRow">
+              <div class="sw">
+                <label for="A">A</label>
+                <div>
+                  <input id="A" type="checkbox" />
+                  <label class="pill" for="A" aria-label="A切替"></label>
+                </div>
+              </div>
+              <div class="sw">
+                <label for="B">B</label>
+                <div>
+                  <input id="B" type="checkbox" />
+                  <label class="pill" for="B" aria-label="B切替"></label>
+                </div>
+              </div>
+              <div class="sw">
+                <label for="Cin">Cin</label>
+                <div>
+                  <input id="Cin" type="checkbox" />
+                  <label class="pill" for="Cin" aria-label="Cin切替"></label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="box">
+            <h3>出力</h3>
+            <div class="outGrid">
+              <div class="out">
+                <div>Sum</div>
+                <div class="badge off" id="SumBadge">0</div>
+              </div>
+              <div class="out">
+                <div>Cout</div>
+                <div class="badge off" id="CoutBadge">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 標準式ビュー -->
+        <div id="viewStd" class="expr">
+          <div class="line">
+            <b>式（標準式）</b><br />
+            Sum = A ⊕ B ⊕ Cin<br />
+            Cout = (A ∧ B) ∨ (Cin ∧ (A ⊕ B))
+          </div>
+          <div class="line">
+            <b>途中の値（標準式）</b><br />
+            X = A ⊕ B = <code id="xVal">0</code><br />
+            P = A ∧ B = <code id="pVal">0</code><br />
+            Q = Cin ∧ X = <code id="qVal">0</code><br />
+            Cout = P ∨ Q = <code id="cStdVal">0</code>
+          </div>
+        </div>
+
+        <!-- HA+HA+OR ビュー -->
+        <div id="viewHA" class="expr" style="display: none">
+          <div class="line">
+            <b>構成（半加算器2段 + OR）</b><br />
+            HA1(A, B) → (S1, C1)<br />
+            HA2(S1, Cin) → (Sum, C2)<br />
+            Cout = C1 ∨ C2
+          </div>
+
+          <div class="grid2">
+            <div class="mini">
+              <h4>HA1（A と B）</h4>
+              <div class="kv2">
+                <div>S1 = A ⊕ B</div>
+                <div><code id="s1Val">0</code></div>
+              </div>
+              <div class="kv2">
+                <div>C1 = A ∧ B</div>
+                <div><code id="c1Val">0</code></div>
+              </div>
+            </div>
+
+            <div class="mini">
+              <h4>HA2（S1 と Cin）</h4>
+              <div class="kv2">
+                <div>Sum = S1 ⊕ Cin</div>
+                <div><code id="sum2Val">0</code></div>
+              </div>
+              <div class="kv2">
+                <div>C2 = S1 ∧ Cin</div>
+                <div><code id="c2Val">0</code></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="line">
+            <b>最後（OR）</b><br />
+            Cout = C1 ∨ C2 = <code id="cHaVal">0</code>
+          </div>
+        </div>
+
+        <div class="footerNote">
+          授業向けの流れ：HA1 の S1/C1 → HA2 の Sum/C2 → OR の Cout
+          の順で「値が伝わる」ことを追わせると理解が安定します。
+        </div>
+      </section>
+
+      <!-- 右：図 + 真理値表 -->
+      <section class="card">
+        <h2>回路図</h2>
+
+        <div class="diagramWrap">
+          <div class="diagramTitle">
+            <h3>HA + HA + OR（値が 1 の線だけ光る）</h3>
+            <p class="hint">青：Sum系 / 緑：Carry系</p>
+          </div>
+
+          <!-- viewBox: 横長 -->
+          <svg
+            viewBox="0 0 860 220"
+            width="100%"
+            height="auto"
+            aria-label="全加算回路のブロック図"
+          >
+            <!-- 入力ラベル -->
+            <text x="30" y="60" class="lbl">A</text>
+            <text x="30" y="110" class="lbl">B</text>
+            <text x="30" y="180" class="lbl">Cin</text>
+
+            <!-- ブロック -->
+            <rect
+              x="160"
+              y="35"
+              width="170"
+              height="110"
+              rx="14"
+              class="blk"
+            ></rect>
+            <text x="245" y="78" text-anchor="middle" font-size="14">HA1</text>
+            <text x="245" y="103" text-anchor="middle" class="lbl">A, B</text>
+
+            <rect
+              x="420"
+              y="80"
+              width="170"
+              height="110"
+              rx="14"
+              class="blk"
+            ></rect>
+            <text x="505" y="123" text-anchor="middle" font-size="14">HA2</text>
+            <text x="505" y="148" text-anchor="middle" class="lbl">
+              S1, Cin
+            </text>
+
+            <rect
+              x="650"
+              y="45"
+              width="170"
+              height="110"
+              rx="14"
+              class="blk"
+            ></rect>
+            <text x="735" y="88" text-anchor="middle" font-size="14">OR</text>
+            <text x="735" y="113" text-anchor="middle" class="lbl">C1, C2</text>
+
+            <!-- ワイヤ（入力→HA1） -->
+            <path id="wA" class="wire" d="M 55 55 L 160 55"></path>
+            <circle id="dA" class="dot" cx="55" cy="55" r="4"></circle>
+
+            <path id="wB" class="wire" d="M 55 105 L 160 105"></path>
+            <circle id="dB" class="dot" cx="55" cy="105" r="4"></circle>
+
+            <!-- HA1 出力：S1（青）→ HA2 -->
+            <path id="wS1" class="wire" d="M 330 70 L 420 70 L 420 100"></path>
+            <circle id="dS1" class="dot" cx="330" cy="70" r="4"></circle>
+
+            <!-- HA1 出力：C1（carry 緑）→ OR -->
+            <path
+              id="wC1"
+              class="wire carry"
+              d="M 330 120 L 610 120 L 650 90"
+            ></path>
+            <circle id="dC1" class="dot carry" cx="330" cy="120" r="4"></circle>
+
+            <!-- Cin → HA2 -->
+            <path
+              id="wCin"
+              class="wire"
+              d="M 55 175 L 395 175 L 420 150"
+            ></path>
+            <circle id="dCin" class="dot" cx="55" cy="175" r="4"></circle>
+
+            <!-- HA2 出力：Sum（青）→ 右へ -->
+            <path id="wSum" class="wire" d="M 590 120 L 830 120"></path>
+            <circle id="dSum" class="dot" cx="590" cy="120" r="4"></circle>
+            <text x="835" y="124" class="lbl">Sum</text>
+
+            <!-- HA2 出力：C2（carry 緑）→ OR -->
+            <path
+              id="wC2"
+              class="wire carry"
+              d="M 590 170 L 640 170 L 650 120"
+            ></path>
+            <circle id="dC2" class="dot carry" cx="590" cy="170" r="4"></circle>
+
+            <!-- OR 出力：Cout（carry 緑）→ 右へ -->
+            <path id="wCout" class="wire carry" d="M 820 100 L 830 100"></path>
+            <circle
+              id="dCout"
+              class="dot carry"
+              cx="820"
+              cy="100"
+              r="4"
+            ></circle>
+            <text x="835" y="104" class="lbl">Cout</text>
+
+            <!-- 注釈（小） -->
+            <text x="168" y="160" class="lbl">S1 = A ⊕ B</text>
+            <text x="168" y="185" class="lbl">C1 = A ∧ B</text>
+            <text x="428" y="205" class="lbl">C2 = S1 ∧ Cin</text>
+          </svg>
+        </div>
+
+        <h2>真理値表（該当行をハイライト）</h2>
+        <table aria-label="全加算回路の真理値表">
+          <thead>
+            <tr>
+              <th>A</th>
+              <th>B</th>
+              <th>Cin</th>
+              <th>Sum</th>
+              <th>Cout</th>
+              <th>A+B+Cin</th>
+            </tr>
+          </thead>
+          <tbody id="ttBody"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      // ---------- ビット演算（0/1） ----------
+      const xor = (a, b) => (a ^ b) & 1;
+      const and = (a, b) => a & b & 1;
+      const or = (a, b) => (a | b) & 1;
+
+      function halfAdder(a, b) {
+        const s = xor(a, b);
+        const c = and(a, b);
+        return { s, c };
+      }
+
+      function fullAdderStandard(A, B, Cin) {
+        const X = xor(A, B); // A ⊕ B
+        const Sum = xor(X, Cin); // (A ⊕ B) ⊕ Cin
+        const P = and(A, B); // A ∧ B
+        const Q = and(Cin, X); // Cin ∧ (A ⊕ B)
+        const Cout = or(P, Q); // (A ∧ B) ∨ (Cin ∧ (A ⊕ B))
+        return { X, P, Q, Sum, Cout };
+      }
+
+      function fullAdderByHalfAdders(A, B, Cin) {
+        const ha1 = halfAdder(A, B); // -> S1, C1
+        const ha2 = halfAdder(ha1.s, Cin); // -> Sum, C2
+        const Cout = or(ha1.c, ha2.c); // C1 ∨ C2
+        return { S1: ha1.s, C1: ha1.c, Sum: ha2.s, C2: ha2.c, Cout };
+      }
+
+      // ---------- DOM ----------
+      const elA = document.getElementById("A");
+      const elB = document.getElementById("B");
+      const elCin = document.getElementById("Cin");
+
+      const binIn = document.getElementById("binIn");
+      const decSum = document.getElementById("decSum");
+
+      const sumBadge = document.getElementById("SumBadge");
+      const coutBadge = document.getElementById("CoutBadge");
+
+      // 標準式表示
+      const xVal = document.getElementById("xVal");
+      const pVal = document.getElementById("pVal");
+      const qVal = document.getElementById("qVal");
+      const cStdVal = document.getElementById("cStdVal");
+
+      // HA表示
+      const s1Val = document.getElementById("s1Val");
+      const c1Val = document.getElementById("c1Val");
+      const sum2Val = document.getElementById("sum2Val");
+      const c2Val = document.getElementById("c2Val");
+      const cHaVal = document.getElementById("cHaVal");
+
+      // 真理値表
+      const ttBody = document.getElementById("ttBody");
+
+      // モード切替
+      const btnStd = document.getElementById("btnStd");
+      const btnHA = document.getElementById("btnHA");
+      const viewStd = document.getElementById("viewStd");
+      const viewHA = document.getElementById("viewHA");
+      let mode = "std"; // "std" | "ha"
+
+      function setMode(next) {
+        mode = next;
+
+        btnStd.classList.toggle("active", mode === "std");
+        btnHA.classList.toggle("active", mode === "ha");
+        btnStd.setAttribute("aria-selected", String(mode === "std"));
+        btnHA.setAttribute("aria-selected", String(mode === "ha"));
+
+        viewStd.style.display = mode === "std" ? "grid" : "none";
+        viewHA.style.display = mode === "ha" ? "grid" : "none";
+
+        update();
+      }
+      btnStd.addEventListener("click", () => setMode("std"));
+      btnHA.addEventListener("click", () => setMode("ha"));
+
+      // ---------- SVGワイヤ（光らせる対象） ----------
+      const wires = {
+        A: [document.getElementById("wA"), document.getElementById("dA")],
+        B: [document.getElementById("wB"), document.getElementById("dB")],
+        Cin: [document.getElementById("wCin"), document.getElementById("dCin")],
+        S1: [document.getElementById("wS1"), document.getElementById("dS1")],
+        C1: [document.getElementById("wC1"), document.getElementById("dC1")],
+        Sum: [document.getElementById("wSum"), document.getElementById("dSum")],
+        C2: [document.getElementById("wC2"), document.getElementById("dC2")],
+        Cout: [
+          document.getElementById("wCout"),
+          document.getElementById("dCout"),
+        ],
+      };
+
+      function setOnOff(elements, isOn) {
+        elements.forEach((el) => {
+          if (!el) return;
+          el.classList.toggle("on", !!isOn);
+        });
+      }
+
+      // ---------- 真理値表生成 ----------
+      const rows = [];
+      for (let A = 0; A <= 1; A++) {
+        for (let B = 0; B <= 1; B++) {
+          for (let Cin = 0; Cin <= 1; Cin++) {
+            const r = fullAdderStandard(A, B, Cin);
+            rows.push({
+              A,
+              B,
+              Cin,
+              Sum: r.Sum,
+              Cout: r.Cout,
+              total: A + B + Cin,
+            });
+          }
+        }
+      }
+
+      function renderTruthTable() {
+        ttBody.innerHTML = "";
+        rows.forEach((r, idx) => {
+          const tr = document.createElement("tr");
+          tr.dataset.idx = String(idx);
+          tr.innerHTML = `
+          <td>${r.A}</td><td>${r.B}</td><td>${r.Cin}</td>
+          <td>${r.Sum}</td><td>${r.Cout}</td><td>${r.total}</td>
+        `;
+          ttBody.appendChild(tr);
+        });
+      }
+
+      function highlightRow(A, B, Cin) {
+        const idx = rows.findIndex(
+          (r) => r.A === A && r.B === B && r.Cin === Cin
+        );
+        [...ttBody.querySelectorAll("tr")].forEach((tr) =>
+          tr.classList.remove("active")
+        );
+        const target = ttBody.querySelector(`tr[data-idx="${idx}"]`);
+        if (target) target.classList.add("active");
+      }
+
+      function setBadge(el, v) {
+        el.textContent = String(v);
+        if (v === 1) {
+          el.classList.add("on");
+          el.classList.remove("off");
+        } else {
+          el.classList.add("off");
+          el.classList.remove("on");
+        }
+      }
+
+      function updateDiagram(A, B, Cin, ha) {
+        // 入力線
+        setOnOff(wires.A, A);
+        setOnOff(wires.B, B);
+        setOnOff(wires.Cin, Cin);
+
+        // HA構成の中間線（S1, C1, C2）
+        setOnOff(wires.S1, ha.S1);
+        setOnOff(wires.C1, ha.C1);
+        setOnOff(wires.C2, ha.C2);
+
+        // 出力線
+        setOnOff(wires.Sum, ha.Sum);
+        setOnOff(wires.Cout, ha.Cout);
+      }
+
+      function update() {
+        const A = elA.checked ? 1 : 0;
+        const B = elB.checked ? 1 : 0;
+        const Cin = elCin.checked ? 1 : 0;
+
+        binIn.textContent = `A B Cin = ${A} ${B} ${Cin}`;
+        decSum.textContent = String(A + B + Cin);
+
+        // 出力（標準式）
+        const std = fullAdderStandard(A, B, Cin);
+        setBadge(sumBadge, std.Sum);
+        setBadge(coutBadge, std.Cout);
+
+        // 標準式ビュー
+        xVal.textContent = String(std.X);
+        pVal.textContent = String(std.P);
+        qVal.textContent = String(std.Q);
+        cStdVal.textContent = String(std.Cout);
+
+        // HAビュー
+        const ha = fullAdderByHalfAdders(A, B, Cin);
+        s1Val.textContent = String(ha.S1);
+        c1Val.textContent = String(ha.C1);
+        sum2Val.textContent = String(ha.Sum);
+        c2Val.textContent = String(ha.C2);
+        cHaVal.textContent = String(ha.Cout);
+
+        // 図（SVG）
+        updateDiagram(A, B, Cin, ha);
+
+        // 表
+        highlightRow(A, B, Cin);
+      }
+
+      // 初期化
+      renderTruthTable();
+      [elA, elB, elCin].forEach((el) => el.addEventListener("change", update));
+      setMode("std");
+    </script>
+  </body>
+</html>
