@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GlowAdder-MIL | 全加算回路 伝搬可視化</title>
+
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #101a30;
+        --text: #e8eefc;
+        --muted: #b7c3e6;
+        --line: rgba(255, 255, 255, 0.12);
+        --sum: #8ab4ff;
+        --carry: #7ee787;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans JP",
+          sans-serif;
+        background: radial-gradient(1000px 600px at 20% 0%, #17264a, var(--bg));
+        color: var(--text);
+      }
+      header,
+      main {
+        max-width: 980px;
+        margin: auto;
+      }
+      header {
+        padding: 20px 16px 8px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      main {
+        padding: 12px 16px 28px;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 860px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: rgba(16, 26, 48, 0.88);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+
+      button {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        padding: 8px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .switch {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin-bottom: 6px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .pill {
+        width: 40px;
+        height: 24px;
+        border-radius: 999px;
+        background: #555;
+        position: relative;
+        cursor: pointer;
+      }
+      .pill::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        transition: 0.2s;
+      }
+      input {
+        display: none;
+      }
+      input:checked + .pill {
+        background: var(--sum);
+      }
+      input:checked + .pill::after {
+        transform: translateX(16px);
+      }
+
+      .badge {
+        min-width: 44px;
+        text-align: center;
+        padding: 6px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        font-weight: 700;
+      }
+      .on.sum {
+        color: var(--sum);
+      }
+      .on.carry {
+        color: var(--carry);
+      }
+
+      .diagramWrap {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.12);
+      }
+
+      svg text {
+        fill: #e8eefc;
+        font-size: 12px;
+      }
+      .wire {
+        stroke: #666;
+        stroke-width: 3;
+        fill: none;
+      }
+      .wire.sum.on {
+        stroke: var(--sum);
+        filter: drop-shadow(0 0 6px var(--sum));
+      }
+      .wire.carry.on {
+        stroke: var(--carry);
+        filter: drop-shadow(0 0 6px var(--carry));
+      }
+      .gate {
+        fill: #101a30;
+        stroke: #aaa;
+        stroke-width: 1.5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>GlowAdder-MIL</h1>
+      <p>MIL論理記号（XOR / AND / OR）で見る全加算回路の信号伝搬</p>
+    </header>
+
+    <main>
+      <!-- 左 -->
+      <section class="card">
+        <h2>入力 / 出力</h2>
+
+        <div class="switch">
+          <label>A</label>
+          <div>
+            <input id="A" type="checkbox" /><label class="pill" for="A"></label>
+          </div>
+        </div>
+        <div class="switch">
+          <label>B</label>
+          <div>
+            <input id="B" type="checkbox" /><label class="pill" for="B"></label>
+          </div>
+        </div>
+        <div class="switch">
+          <label>Cin</label>
+          <div>
+            <input id="Cin" type="checkbox" /><label
+              class="pill"
+              for="Cin"
+            ></label>
+          </div>
+        </div>
+
+        <div style="margin-top: 10px">
+          <div class="badge sum" id="Sum">Sum 0</div>
+          <div class="badge carry" id="Cout" style="margin-top: 6px">
+            Cout 0
+          </div>
+        </div>
+
+        <h2 style="margin-top: 14px">伝搬</h2>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap">
+          <button id="step">次へ</button>
+          <button id="play">再生</button>
+          <button id="stop">停止</button>
+          <button id="reset">リセット</button>
+        </div>
+        <div style="margin-top: 6px; color: var(--muted); font-size: 12px">
+          遅延
+          <input
+            id="delay"
+            type="range"
+            min="200"
+            max="1200"
+            step="200"
+            value="400"
+          />
+          <span id="dval">400</span>ms / step <span id="sval">0</span>
+        </div>
+      </section>
+
+      <!-- 右 -->
+      <section class="card">
+        <h2>MIL論理回路図</h2>
+        <div class="diagramWrap">
+          <svg viewBox="0 0 820 220" width="100%">
+            <!-- XOR1 -->
+            <path
+              class="gate"
+              d="M180 40 Q220 90 180 140 Q220 90 260 90 Q220 90 180 40 Z"
+            />
+            <path class="gate" d="M170 40 Q210 90 170 140" />
+            <text x="215" y="95">XOR</text>
+
+            <!-- AND1 -->
+            <path
+              class="gate"
+              d="M180 150 L220 150 Q260 180 220 210 L180 210 Z"
+            />
+            <text x="215" y="185">AND</text>
+
+            <!-- XOR2 -->
+            <path
+              class="gate"
+              d="M420 70 Q460 120 420 170 Q460 120 500 120 Q460 120 420 70 Z"
+            />
+            <path class="gate" d="M410 70 Q450 120 410 170" />
+            <text x="455" y="125">XOR</text>
+
+            <!-- AND2 -->
+            <path
+              class="gate"
+              d="M420 180 L460 180 Q500 210 460 240 L420 240 Z"
+            />
+            <text x="455" y="215">AND</text>
+
+            <!-- OR -->
+            <path
+              class="gate"
+              d="M620 100 Q680 120 620 160 Q700 120 620 80 Z"
+            />
+            <text x="665" y="125">OR</text>
+
+            <!-- Wires -->
+            <path id="wA" class="wire sum" d="M40 60 L170 60" />
+            <path id="wB" class="wire sum" d="M40 120 L170 120" />
+            <path id="wCin" class="wire sum" d="M40 180 L420 180" />
+
+            <path id="wS1" class="wire sum" d="M260 90 L420 90" />
+            <path id="wC1" class="wire carry" d="M260 180 L620 180" />
+            <path id="wSum" class="wire sum" d="M500 120 L780 120" />
+            <path id="wC2" class="wire carry" d="M500 210 L620 210" />
+            <path id="wCout" class="wire carry" d="M700 120 L780 120" />
+
+            <text x="10" y="65">A</text>
+            <text x="10" y="125">B</text>
+            <text x="10" y="185">Cin</text>
+            <text x="785" y="125">Sum</text>
+            <text x="785" y="115">Cout</text>
+          </svg>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const xor = (a, b) => a ^ b,
+        and = (a, b) => a & b,
+        or = (a, b) => a | b;
+
+      let step = 0,
+        timer = null,
+        playing = false;
+
+      const wires = {
+        A: $("wA"),
+        B: $("wB"),
+        Cin: $("wCin"),
+        S1: $("wS1"),
+        C1: $("wC1"),
+        Sum: $("wSum"),
+        C2: $("wC2"),
+        Cout: $("wCout"),
+      };
+
+      function calc(A, B, C) {
+        const S1 = xor(A, B),
+          C1 = and(A, B);
+        const Sum = xor(S1, C),
+          C2 = and(S1, C);
+        return { S1, C1, Sum, C2, Cout: or(C1, C2) };
+      }
+      function setWire(w, on) {
+        w.classList.toggle("on", on);
+      }
+      function update() {
+        const A = $("A").checked | 0,
+          B = $("B").checked | 0,
+          C = $("Cin").checked | 0;
+        const r = calc(A, B, C);
+
+        $("Sum").textContent = "Sum " + r.Sum;
+        $("Cout").textContent = "Cout " + r.Cout;
+        $("Sum").className = "badge " + (r.Sum ? "on sum" : "");
+        $("Cout").className = "badge " + (r.Cout ? "on carry" : "");
+
+        Object.values(wires).forEach((w) => w.classList.remove("on"));
+        if (step >= 0) {
+          setWire(wires.A, A);
+          setWire(wires.B, B);
+          setWire(wires.Cin, C);
+        }
+        if (step >= 1) {
+          setWire(wires.S1, r.S1);
+          setWire(wires.C1, r.C1);
+        }
+        if (step >= 2) {
+          setWire(wires.Sum, r.Sum);
+          setWire(wires.C2, r.C2);
+        }
+        if (step >= 3) {
+          setWire(wires.Cout, r.Cout);
+        }
+        $("sval").textContent = step;
+      }
+      function next() {
+        step = Math.min(3, step + 1);
+        update();
+      }
+      function play() {
+        if (playing) return;
+        playing = true;
+        const loop = () => {
+          if (step >= 3) {
+            playing = false;
+            return;
+          }
+          next();
+          timer = setTimeout(loop, $("delay").value);
+        };
+        loop();
+      }
+      function stop() {
+        playing = false;
+        clearTimeout(timer);
+      }
+      function reset() {
+        stop();
+        step = 0;
+        update();
+      }
+
+      $("step").onclick = next;
+      $("play").onclick = play;
+      $("stop").onclick = stop;
+      $("reset").onclick = reset;
+      $("delay").oninput = (e) => ($("dval").textContent = e.target.value);
+      ["A", "B", "Cin"].forEach((id) => ($(id).onchange = reset));
+      update();
+    </script>
+  </body>
+</html>

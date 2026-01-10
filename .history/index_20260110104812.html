@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GlowAdder – 全加算回路 伝搬シミュレータ</title>
+
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #101a30;
+        --text: #e8eefc;
+        --muted: #b7c3e6;
+        --line: rgba(255, 255, 255, 0.12);
+        --ok: #7ee787;
+        --blue: #8ab4ff;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+          "Noto Sans JP", sans-serif;
+        background: radial-gradient(1000px 600px at 20% 0%, #17264a, var(--bg));
+        color: var(--text);
+      }
+      header {
+        max-width: 980px;
+        margin: auto;
+        padding: 20px 16px 8px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      main {
+        max-width: 980px;
+        margin: auto;
+        padding: 12px 16px 28px;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 860px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: rgba(16, 26, 48, 0.88);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.12);
+      }
+      .box h3 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .switchRow {
+        display: grid;
+        gap: 10px;
+      }
+      .sw {
+        display: grid;
+        grid-template-columns: 40px 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .pill {
+        width: 40px;
+        height: 26px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid var(--line);
+        position: relative;
+        cursor: pointer;
+      }
+      .pill::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        transition: 0.18s;
+      }
+      input[type="checkbox"] {
+        display: none;
+      }
+      input:checked + .pill {
+        background: rgba(138, 180, 255, 0.22);
+        border-color: rgba(138, 180, 255, 0.45);
+      }
+      input:checked + .pill::after {
+        transform: translateX(14px);
+        background: var(--blue);
+      }
+
+      .out {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .badge {
+        min-width: 44px;
+        text-align: center;
+        padding: 6px 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        border: 1px solid var(--line);
+      }
+      .badge.on {
+        color: var(--ok);
+        border-color: rgba(126, 231, 135, 0.6);
+      }
+      .badge.off {
+        color: #ccc;
+      }
+
+      button {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        padding: 8px 10px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .diagramWrap {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.12);
+        margin-bottom: 12px;
+      }
+      svg text {
+        fill: #e8eefc;
+        font-size: 12px;
+      }
+      .blk {
+        fill: #101a30;
+        stroke: #555;
+        stroke-width: 1.2;
+      }
+      .wire {
+        stroke: #666;
+        stroke-width: 3;
+        fill: none;
+      }
+      .wire.on {
+        stroke: var(--blue);
+        filter: drop-shadow(0 0 6px var(--blue));
+      }
+      .wire.carry.on {
+        stroke: var(--ok);
+        filter: drop-shadow(0 0 6px var(--ok));
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 8px;
+        text-align: center;
+        border-bottom: 1px solid var(--line);
+      }
+      tr.active td {
+        background: rgba(138, 180, 255, 0.15);
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>GlowAdder</h1>
+      <p>全加算回路（HA + HA + OR）― 信号の伝搬を段階的に可視化</p>
+    </header>
+
+    <main>
+      <!-- 左 -->
+      <section class="card">
+        <h2>入力 / 出力</h2>
+
+        <div class="box">
+          <h3>入力</h3>
+          <div class="switchRow">
+            <div class="sw">
+              <label>A</label>
+              <div>
+                <input id="A" type="checkbox" /><label
+                  class="pill"
+                  for="A"
+                ></label>
+              </div>
+            </div>
+            <div class="sw">
+              <label>B</label>
+              <div>
+                <input id="B" type="checkbox" /><label
+                  class="pill"
+                  for="B"
+                ></label>
+              </div>
+            </div>
+            <div class="sw">
+              <label>Cin</label>
+              <div>
+                <input id="Cin" type="checkbox" /><label
+                  class="pill"
+                  for="Cin"
+                ></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="box" style="margin-top: 10px">
+          <h3>出力</h3>
+          <div class="out">
+            <div>Sum</div>
+            <div class="badge off" id="Sum">0</div>
+          </div>
+          <div class="out" style="margin-top: 6px">
+            <div>Cout</div>
+            <div class="badge off" id="Cout">0</div>
+          </div>
+        </div>
+
+        <div class="box" style="margin-top: 10px">
+          <h3>伝搬制御</h3>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap">
+            <button id="stepBtn">次へ</button>
+            <button id="playBtn">再生</button>
+            <button id="stopBtn">停止</button>
+            <button id="resetBtn">リセット</button>
+          </div>
+          <div style="margin-top: 6px; color: var(--muted); font-size: 12px">
+            遅延
+            <input
+              id="delay"
+              type="range"
+              min="100"
+              max="1200"
+              step="100"
+              value="400"
+            />
+            <span id="delayVal">400</span>ms / ステップ
+            <span id="stepVal">0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右 -->
+      <section class="card">
+        <h2>回路図（伝搬）</h2>
+
+        <div class="diagramWrap">
+          <svg viewBox="0 0 820 200" width="100%">
+            <rect x="140" y="30" width="160" height="100" rx="12" class="blk" />
+            <text x="220" y="60" text-anchor="middle">HA1</text>
+
+            <rect x="380" y="80" width="160" height="100" rx="12" class="blk" />
+            <text x="460" y="110" text-anchor="middle">HA2</text>
+
+            <rect x="620" y="40" width="160" height="100" rx="12" class="blk" />
+            <text x="700" y="70" text-anchor="middle">OR</text>
+
+            <path id="wA" class="wire" d="M40 50 L140 50" />
+            <path id="wB" class="wire" d="M40 100 L140 100" />
+            <path id="wCin" class="wire" d="M40 170 L380 170" />
+
+            <path id="wS1" class="wire" d="M300 50 L380 50 L380 100" />
+            <path id="wC1" class="wire carry" d="M300 120 L620 120" />
+
+            <path id="wSum" class="wire" d="M540 120 L800 120" />
+            <path id="wC2" class="wire carry" d="M540 170 L620 170" />
+            <path id="wCout" class="wire carry" d="M780 80 L800 80" />
+
+            <text x="20" y="55">A</text>
+            <text x="20" y="105">B</text>
+            <text x="20" y="175">Cin</text>
+            <text x="805" y="125">Sum</text>
+            <text x="805" y="85">Cout</text>
+          </svg>
+        </div>
+
+        <h2>真理値表</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>A</th>
+              <th>B</th>
+              <th>Cin</th>
+              <th>Sum</th>
+              <th>Cout</th>
+            </tr>
+          </thead>
+          <tbody id="tt"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const xor = (a, b) => a ^ b,
+        and = (a, b) => a & b,
+        or = (a, b) => a | b;
+
+      let step = 0,
+        playing = false,
+        timer = null;
+
+      const wires = {
+        A: $("wA"),
+        B: $("wB"),
+        Cin: $("wCin"),
+        S1: $("wS1"),
+        C1: $("wC1"),
+        Sum: $("wSum"),
+        C2: $("wC2"),
+        Cout: $("wCout"),
+      };
+
+      function setWire(w, on) {
+        w.classList.toggle("on", on);
+      }
+      function calc(A, B, C) {
+        const S1 = xor(A, B),
+          C1 = and(A, B);
+        const Sum = xor(S1, C),
+          C2 = and(S1, C);
+        return { S1, C1, Sum, C2, Cout: or(C1, C2) };
+      }
+      function update() {
+        const A = $("A").checked | 0,
+          B = $("B").checked | 0,
+          C = $("Cin").checked | 0;
+        const r = calc(A, B, C);
+        $("Sum").textContent = r.Sum;
+        $("Cout").textContent = r.Cout;
+        $("Sum").className = "badge " + (r.Sum ? "on" : "off");
+        $("Cout").className = "badge " + (r.Cout ? "on" : "off");
+
+        Object.values(wires).forEach((w) => w.classList.remove("on"));
+        if (step >= 0) {
+          setWire(wires.A, A);
+          setWire(wires.B, B);
+          setWire(wires.Cin, C);
+        }
+        if (step >= 1) {
+          setWire(wires.S1, r.S1);
+          setWire(wires.C1, r.C1);
+        }
+        if (step >= 2) {
+          setWire(wires.Sum, r.Sum);
+          setWire(wires.C2, r.C2);
+        }
+        if (step >= 3) {
+          setWire(wires.Cout, r.Cout);
+        }
+        $("stepVal").textContent = step;
+        highlight(A, B, C);
+      }
+      function next() {
+        step = Math.min(3, step + 1);
+        update();
+      }
+      function play() {
+        if (playing) return;
+        playing = true;
+        const loop = () => {
+          if (step >= 3) {
+            playing = false;
+            return;
+          }
+          next();
+          timer = setTimeout(loop, $("delay").value);
+        };
+        loop();
+      }
+      function stop() {
+        playing = false;
+        clearTimeout(timer);
+      }
+      function reset() {
+        stop();
+        step = 0;
+        update();
+      }
+
+      $("stepBtn").onclick = next;
+      $("playBtn").onclick = play;
+      $("stopBtn").onclick = stop;
+      $("resetBtn").onclick = reset;
+      $("delay").oninput = (e) => ($("delayVal").textContent = e.target.value);
+      ["A", "B", "Cin"].forEach((id) => ($(id).onchange = reset));
+
+      // 真理値表
+      const tt = $("tt");
+      for (let A = 0; A < 2; A++)
+        for (let B = 0; B < 2; B++)
+          for (let C = 0; C < 2; C++) {
+            const r = calc(A, B, C);
+            const tr = document.createElement("tr");
+            tr.dataset.k = `${A}${B}${C}`;
+            tr.innerHTML = `<td>${A}</td><td>${B}</td><td>${C}</td><td>${r.Sum}</td><td>${r.Cout}</td>`;
+            tt.appendChild(tr);
+          }
+      function highlight(A, B, C) {
+        [...tt.children].forEach((tr) =>
+          tr.classList.toggle("active", tr.dataset.k === `${A}${B}${C}`)
+        );
+      }
+      update();
+    </script>
+  </body>
+</html>
