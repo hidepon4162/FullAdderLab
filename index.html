@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GlowAdder-MIL | 全加算回路（伝搬可視化）</title>
+    <title>GlowAdder-MIL | 全加算/半加算（伝搬可視化）</title>
 
     <style>
       :root {
@@ -33,7 +33,6 @@
         margin: 0 auto;
         padding: 20px 16px 8px;
       }
-
       h1 {
         margin: 0 0 6px;
         font-size: 20px;
@@ -84,6 +83,42 @@
         letter-spacing: 0.02em;
       }
 
+      .hidden {
+        display: none !important;
+      }
+
+      .rowHead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .seg button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 7px 10px;
+        cursor: pointer;
+        font-size: 13px;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .seg button:last-child {
+        border-right: 0;
+      }
+      .seg button.active {
+        color: var(--text);
+        background: rgba(138, 180, 255, 0.16);
+      }
+
       .sw {
         display: grid;
         grid-template-columns: 40px 1fr;
@@ -112,6 +147,7 @@
         position: relative;
         cursor: pointer;
         display: inline-block;
+        user-select: none;
       }
       .pill::after {
         content: "";
@@ -173,7 +209,7 @@
         color: var(--carry);
       }
 
-      button {
+      button.std {
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.06);
         color: var(--text);
@@ -182,10 +218,10 @@
         cursor: pointer;
         font-size: 13px;
       }
-      button:hover {
+      button.std:hover {
         background: rgba(255, 255, 255, 0.1);
       }
-      button:active {
+      button.std:active {
         transform: translateY(1px);
       }
 
@@ -238,7 +274,6 @@
           "Noto Sans JP", sans-serif;
       }
 
-      /* ゲート */
       .gate-outline {
         fill: var(--gateFill);
         stroke: var(--gateStroke);
@@ -252,7 +287,6 @@
         stroke-linecap: round;
       }
 
-      /* 配線 */
       .wire {
         stroke: var(--wire);
         stroke-width: 3.2;
@@ -261,12 +295,10 @@
         stroke-linejoin: round;
       }
 
-      /* ノード */
       .dot {
         fill: rgba(255, 255, 255, 0.4);
       }
 
-      /* ONの発光 */
       .wire.sum.on {
         stroke: var(--sum);
         filter: drop-shadow(0 0 6px rgba(138, 180, 255, 0.55));
@@ -286,17 +318,13 @@
         filter: drop-shadow(0 0 7px rgba(126, 231, 135, 0.55));
       }
 
-      /* フェード（OFF時だけ薄く見せたい） */
       .fadeMid {
         stroke-opacity: 0.4;
       }
-
-      /* ONのときは fadeMid の薄さを打ち消す（濃淡解消） */
       .wire.on.fadeMid {
         stroke-opacity: 1;
       }
 
-      /* ステップでゲートを強調（枠ハイライト） */
       .gateGroup .gate-outline {
         transition: stroke 0.15s ease, filter 0.15s ease;
       }
@@ -305,7 +333,6 @@
         filter: drop-shadow(0 0 10px rgba(138, 180, 255, 0.25));
       }
 
-      /* 今見ている信号のカーソル（流れる点） */
       .flowDot {
         opacity: 0;
         transition: opacity 0.12s ease;
@@ -315,7 +342,6 @@
         opacity: 1;
       }
 
-      /* ゲート遅延UI */
       .delayGrid {
         display: grid;
         grid-template-columns: 1fr;
@@ -373,7 +399,7 @@
     <header>
       <h1>GlowAdder-MIL</h1>
       <p>
-        全加算回路（Full
+        全加算回路（Full Adder）/ 半加算回路（Half
         Adder）を、ANSI/IEEE（通称MIL）系の論理記号（XOR/AND/OR）で表示。<br />
         伝搬（入力→中間→出力）をステップ実行／自動再生で確認できます。
       </p>
@@ -382,7 +408,15 @@
     <main>
       <!-- 左：入力/出力 -->
       <section class="card">
-        <h2>入力 / 出力</h2>
+        <div class="rowHead">
+          <h2 style="margin: 0">入力 / 出力</h2>
+          <div class="seg" aria-label="モード切替">
+            <button id="btnModeFull" type="button" class="active">
+              全加算
+            </button>
+            <button id="btnModeHalf" type="button">半加算</button>
+          </div>
+        </div>
 
         <div class="box">
           <h3>入力</h3>
@@ -403,7 +437,7 @@
             </div>
           </div>
 
-          <div class="sw">
+          <div id="rowCin" class="sw">
             <label for="Cin">Cin</label>
             <div>
               <input id="Cin" type="checkbox" />
@@ -420,15 +454,15 @@
         <div class="box" style="margin-top: 10px">
           <h3>出力</h3>
           <div class="out">
-            <div>Sum</div>
+            <div id="lblSum">Sum</div>
             <div class="badge" id="SumBadge">0</div>
           </div>
           <div class="out">
-            <div>Cout</div>
+            <div id="lblCarry">Cout</div>
             <div class="badge" id="CoutBadge">0</div>
           </div>
           <div class="kv">
-            <div>合計（A + B + Cin）</div>
+            <div id="lblTotal">合計（A + B + Cin）</div>
             <div><code id="decSum">0</code></div>
           </div>
         </div>
@@ -437,10 +471,10 @@
           <h3>伝搬（Propagation）</h3>
 
           <div style="display: flex; gap: 8px; flex-wrap: wrap">
-            <button id="btnStep" type="button">次へ（伝搬）</button>
-            <button id="btnPlay" type="button">再生</button>
-            <button id="btnStop" type="button">停止</button>
-            <button id="btnReset" type="button">リセット</button>
+            <button id="btnStep" class="std" type="button">次へ（伝搬）</button>
+            <button id="btnPlay" class="std" type="button">再生</button>
+            <button id="btnStop" class="std" type="button">停止</button>
+            <button id="btnReset" class="std" type="button">リセット</button>
           </div>
 
           <div style="margin-top: 10px">
@@ -474,7 +508,9 @@
                 />
                 <code id="dAND1v">200</code>
               </div>
-              <div class="delayRow">
+
+              <!-- 全加算のときだけ有効 -->
+              <div id="rowDelayXOR2" class="delayRow">
                 <span>XOR2</span>
                 <input
                   id="dXOR2"
@@ -486,7 +522,7 @@
                 />
                 <code id="dXOR2v">200</code>
               </div>
-              <div class="delayRow">
+              <div id="rowDelayAND2" class="delayRow">
                 <span>AND2</span>
                 <input
                   id="dAND2"
@@ -498,7 +534,7 @@
                 />
                 <code id="dAND2v">200</code>
               </div>
-              <div class="delayRow">
+              <div id="rowDelayOR" class="delayRow">
                 <span>OR</span>
                 <input
                   id="dOR"
@@ -531,8 +567,9 @@
               value="400"
               style="width: 100%"
             />
-            ステップ：<code id="propStep">0</code>（0:入力 / 1:HA1 / 2:HA2 /
-            3:OR）
+            ステップ：<code id="propStep">0</code>（<span id="stepLegend"
+              >0:入力 / 1:HA1 / 2:HA2 / 3:OR</span
+            >）
           </div>
         </div>
       </section>
@@ -541,7 +578,8 @@
       <section class="card">
         <h2>回路図（MIL/ANSI系 記号）</h2>
 
-        <div class="diagramWrap">
+        <!-- 全加算 -->
+        <div id="wrapFull" class="diagramWrap">
           <div class="diagramTitle">
             <h3>XOR + XOR → Sum / AND + AND → OR → Cout（Full Adder）</h3>
             <p class="hint">青：Sum系 / 緑：Carry系</p>
@@ -554,7 +592,6 @@
             aria-label="全加算回路（MIL/ANSI系）"
           >
             <defs>
-              <!-- AND: 幅60 高さ60（出力x=+60） -->
               <g id="GATE_AND">
                 <path
                   class="gate-outline"
@@ -564,7 +601,6 @@
                 />
               </g>
 
-              <!-- OR: 左端を x=0 にして、入力線が途切れないようにする -->
               <g id="GATE_OR">
                 <path
                   class="gate-outline"
@@ -577,28 +613,22 @@
                 <path class="gate-inner" d="M-8,8 C6,22 6,38 -8,52" />
               </g>
 
-              <!-- XOR: OR + extra curve（さらにもう1本左カーブ） -->
               <g id="GATE_XOR">
                 <path class="gate-inner" d="M-16,8 C-2,22 -2,38 -16,52" />
                 <use href="#GATE_OR" />
               </g>
             </defs>
 
-            <!-- ラベル -->
             <text x="30" y="70" font-size="13">A</text>
             <text x="30" y="90" font-size="13">B</text>
             <text x="25" y="205" font-size="13">Cin</text>
-
             <text x="830" y="120" font-size="13">Sum</text>
             <text x="830" y="160" font-size="13">Cout</text>
 
-            <!-- ===== 配線（先に描く） ===== -->
-            <!-- 入力ノード -->
             <circle id="dA" class="dot sum" cx="60" cy="65" r="4"></circle>
             <circle id="dB" class="dot sum" cx="60" cy="85" r="4"></circle>
             <circle id="dCin" class="dot sum" cx="60" cy="200" r="4"></circle>
 
-            <!-- A 分岐（XOR1/AND1） -->
             <path id="wA_L" class="wire sum" d="M60 65 L150 65"></path>
             <path id="wA_R" class="wire sum" d="M150 65 L200 65"></path>
             <path
@@ -608,7 +638,6 @@
             ></path>
             <circle id="jA" class="dot sum" cx="150" cy="65" r="3"></circle>
 
-            <!-- B 分岐（XOR1/AND1） -->
             <path id="wB_L" class="wire sum" d="M60 85 L160 85"></path>
             <path id="wB_R" class="wire sum" d="M160 85 L200 85"></path>
             <path
@@ -618,7 +647,6 @@
             ></path>
             <circle id="jB" class="dot sum" cx="160" cy="85" r="3"></circle>
 
-            <!-- Cin 分岐（XOR2/AND2） -->
             <path id="wCin" class="wire sum" d="M60 200 L360 200"></path>
             <path
               id="wCin_to_XOR2"
@@ -631,7 +659,6 @@
               d="M360 200 L360 195 L440 195"
             ></path>
 
-            <!-- S1（XOR1出力） -->
             <path id="wS1" class="wire sum" d="M274 75 L330 75"></path>
             <circle id="dS1" class="dot sum" cx="274" cy="75" r="4"></circle>
             <path
@@ -653,11 +680,9 @@
             ></path>
             <circle id="dC1" class="dot carry" cx="260" cy="185" r="4"></circle>
 
-            <!-- Sum（XOR2出力） -->
             <path id="wSum" class="wire sum" d="M514 115 L820 115"></path>
             <circle id="dSum" class="dot sum" cx="514" cy="115" r="4"></circle>
 
-            <!-- C2（AND2出力） -> OR in2 -->
             <path
               id="wC2"
               class="wire carry"
@@ -665,7 +690,6 @@
             ></path>
             <circle id="dC2" class="dot carry" cx="500" cy="185" r="4"></circle>
 
-            <!-- Cout（OR出力） -->
             <path id="wCout" class="wire carry" d="M734 150 L820 150"></path>
             <circle
               id="dCout"
@@ -675,7 +699,6 @@
               r="4"
             ></circle>
 
-            <!-- ===== ゲート（最後に描いて配線を自然に隠す） ===== -->
             <g id="G_XOR1" class="gateGroup">
               <use href="#GATE_XOR" transform="translate(200 45)" />
               <text x="237" y="78" text-anchor="middle" font-size="12">
@@ -711,29 +734,141 @@
               </text>
             </g>
 
-            <!-- “今見ている信号”カーソル -->
             <circle id="flow0" class="flowDot" cx="140" cy="65" r="4"></circle>
             <circle id="flow1" class="flowDot" cx="300" cy="75" r="4"></circle>
             <circle id="flow2" class="flowDot" cx="500" cy="115" r="4"></circle>
             <circle id="flow3" class="flowDot" cx="710" cy="150" r="4"></circle>
 
-            <!-- 補助 -->
             <text x="220" y="242" font-size="12" fill="rgba(183,195,230,.9)">
               S1 = A ⊕ B / C1 = A ∧ B / C2 = S1 ∧ Cin
             </text>
           </svg>
         </div>
 
+        <!-- 半加算 -->
+        <div id="wrapHalf" class="diagramWrap hidden">
+          <div class="diagramTitle">
+            <h3>XOR → Sum / AND → Carry（Half Adder）</h3>
+            <p class="hint">青：Sum系 / 緑：Carry系</p>
+          </div>
+
+          <svg
+            viewBox="0 0 860 260"
+            width="100%"
+            height="auto"
+            aria-label="半加算回路（MIL/ANSI系）"
+          >
+            <defs>
+              <g id="HGATE_AND">
+                <path
+                  class="gate-outline"
+                  d="M0,0 L30,0
+                   A30,30 0 0 1 30,60
+                   L0,60 Z"
+                />
+              </g>
+
+              <g id="HGATE_OR">
+                <path
+                  class="gate-outline"
+                  d="M0,0
+                   C24,0 50,12 74,30
+                   C50,48 24,60 0,60
+                   C14,44 14,16 0,0
+                   Z"
+                />
+                <path class="gate-inner" d="M-8,8 C6,22 6,38 -8,52" />
+              </g>
+
+              <g id="HGATE_XOR">
+                <path class="gate-inner" d="M-16,8 C-2,22 -2,38 -16,52" />
+                <use href="#HGATE_OR" />
+              </g>
+            </defs>
+
+            <text x="30" y="70" font-size="13">A</text>
+            <text x="30" y="90" font-size="13">B</text>
+            <text x="830" y="120" font-size="13">Sum</text>
+            <text x="830" y="190" font-size="13">Carry</text>
+
+            <!-- 入力ノード -->
+            <circle id="HdA" class="dot sum" cx="60" cy="65" r="4"></circle>
+            <circle id="HdB" class="dot sum" cx="60" cy="85" r="4"></circle>
+
+            <!-- A 分岐（XOR/AND） -->
+            <path id="HwA_L" class="wire sum" d="M60 65 L170 65"></path>
+            <path id="HwA_R" class="wire sum" d="M170 65 L220 65"></path>
+            <path
+              id="HwA_to_AND"
+              class="wire sum fadeMid"
+              d="M170 65 L170 175 L220 175"
+            ></path>
+            <circle id="HjA" class="dot sum" cx="170" cy="65" r="3"></circle>
+
+            <!-- B 分岐（XOR/AND） -->
+            <path id="HwB_L" class="wire sum" d="M60 85 L180 85"></path>
+            <path id="HwB_R" class="wire sum" d="M180 85 L220 85"></path>
+            <path
+              id="HwB_to_AND"
+              class="wire sum fadeMid"
+              d="M180 85 L180 195 L220 195"
+            ></path>
+            <circle id="HjB" class="dot sum" cx="180" cy="85" r="3"></circle>
+
+            <!-- XOR 出力 -->
+            <path id="HwSum" class="wire sum" d="M294 75 L820 115"></path>
+            <circle id="HdSum" class="dot sum" cx="294" cy="75" r="4"></circle>
+
+            <!-- AND 出力（Carry） -->
+            <path id="HwCarry" class="wire carry" d="M280 185 L820 185"></path>
+            <circle
+              id="HdCarry"
+              class="dot carry"
+              cx="280"
+              cy="185"
+              r="4"
+            ></circle>
+
+            <!-- ゲート -->
+            <g id="HG_XOR1" class="gateGroup">
+              <use href="#HGATE_XOR" transform="translate(220 45)" />
+              <text x="257" y="78" text-anchor="middle" font-size="12">
+                XOR
+              </text>
+            </g>
+
+            <g id="HG_AND1" class="gateGroup">
+              <use href="#HGATE_AND" transform="translate(220 155)" />
+              <text x="250" y="190" text-anchor="middle" font-size="12">
+                AND
+              </text>
+            </g>
+
+            <circle id="Hflow0" class="flowDot" cx="160" cy="65" r="4"></circle>
+            <circle
+              id="Hflow1"
+              class="flowDot"
+              cx="300"
+              cy="185"
+              r="4"
+            ></circle>
+
+            <text x="300" y="242" font-size="12" fill="rgba(183,195,230,.9)">
+              Sum = A ⊕ B / Carry = A ∧ B
+            </text>
+          </svg>
+        </div>
+
         <h2>真理値表（該当行をハイライト）</h2>
-        <table aria-label="全加算回路の真理値表">
+        <table aria-label="加算回路の真理値表">
           <thead>
             <tr>
               <th>A</th>
               <th>B</th>
-              <th>Cin</th>
+              <th id="thCin">Cin</th>
               <th>Sum</th>
-              <th>Cout</th>
-              <th>A+B+Cin</th>
+              <th id="thCarry">Cout</th>
+              <th id="thTotal">A+B+Cin</th>
             </tr>
           </thead>
           <tbody id="ttBody"></tbody>
@@ -756,16 +891,39 @@
         return { S1, C1, Sum, C2, Cout };
       }
 
+      function halfAdder(A, B) {
+        const Sum = xor(A, B);
+        const Carry = and(A, B);
+        return { Sum, Carry };
+      }
+
       // ===== DOM =====
       const elA = document.getElementById("A");
       const elB = document.getElementById("B");
       const elCin = document.getElementById("Cin");
+      const rowCin = document.getElementById("rowCin");
 
       const binIn = document.getElementById("binIn");
       const decSum = document.getElementById("decSum");
 
       const sumBadge = document.getElementById("SumBadge");
       const coutBadge = document.getElementById("CoutBadge");
+
+      const lblCarry = document.getElementById("lblCarry");
+      const lblTotal = document.getElementById("lblTotal");
+
+      const btnModeFull = document.getElementById("btnModeFull");
+      const btnModeHalf = document.getElementById("btnModeHalf");
+
+      const wrapFull = document.getElementById("wrapFull");
+      const wrapHalf = document.getElementById("wrapHalf");
+
+      const thCin = document.getElementById("thCin");
+      const thCarry = document.getElementById("thCarry");
+      const thTotal = document.getElementById("thTotal");
+      const ttBody = document.getElementById("ttBody");
+
+      const stepLegend = document.getElementById("stepLegend");
 
       // 伝搬UI
       const btnStep = document.getElementById("btnStep");
@@ -776,37 +934,11 @@
       const delayLabel = document.getElementById("delayLabel");
       const propStepLabel = document.getElementById("propStep");
 
-      // 真理値表
-      const ttBody = document.getElementById("ttBody");
+      // ゲート遅延UI（全加算用の行は半加算で隠す）
+      const rowDelayXOR2 = document.getElementById("rowDelayXOR2");
+      const rowDelayAND2 = document.getElementById("rowDelayAND2");
+      const rowDelayOR = document.getElementById("rowDelayOR");
 
-      // --- ゲートのDOM（ハイライト用） ---
-      const gateEls = {
-        XOR1: document.getElementById("G_XOR1"),
-        AND1: document.getElementById("G_AND1"),
-        XOR2: document.getElementById("G_XOR2"),
-        AND2: document.getElementById("G_AND2"),
-        OR: document.getElementById("G_OR"),
-      };
-
-      // --- flowDot（カーソル） ---
-      const flowDots = [
-        document.getElementById("flow0"),
-        document.getElementById("flow1"),
-        document.getElementById("flow2"),
-        document.getElementById("flow3"),
-      ];
-
-      function setActiveGate(name) {
-        Object.values(gateEls).forEach((g) => g?.classList.remove("active"));
-        if (name && gateEls[name]) gateEls[name].classList.add("active");
-      }
-      function setFlowDot(step) {
-        flowDots.forEach((d) => d?.classList.remove("on"));
-        if (step >= 0 && step < flowDots.length)
-          flowDots[step]?.classList.add("on");
-      }
-
-      // --- ゲート別遅延 ---
       const dXOR1 = document.getElementById("dXOR1");
       const dAND1 = document.getElementById("dAND1");
       const dXOR2 = document.getElementById("dXOR2");
@@ -830,18 +962,90 @@
       bindDelay(dAND2, dAND2v);
       bindDelay(dOR, dORv);
 
-      function gateDelayMsForStep(step) {
-        // step: 0入力 / 1HA1 / 2HA2 / 3OR
-        if (step === 1)
-          return Math.max(Number(dXOR1.value), Number(dAND1.value));
-        if (step === 2)
-          return Math.max(Number(dXOR2.value), Number(dAND2.value));
-        if (step === 3) return Number(dOR.value);
-        return 0;
+      // ===== モード =====
+      // "full" | "half"
+      let mode = "full";
+
+      function setMode(next) {
+        mode = next;
+
+        btnModeFull.classList.toggle("active", mode === "full");
+        btnModeHalf.classList.toggle("active", mode === "half");
+
+        wrapFull.classList.toggle("hidden", mode !== "full");
+        wrapHalf.classList.toggle("hidden", mode !== "half");
+
+        // Cinの扱い
+        rowCin.classList.toggle("hidden", mode !== "full");
+        if (mode !== "full") {
+          elCin.checked = false; // 半加算はCin=0固定
+        }
+
+        // 出力ラベル
+        lblCarry.textContent = mode === "full" ? "Cout" : "Carry";
+        lblTotal.textContent =
+          mode === "full" ? "合計（A + B + Cin）" : "合計（A + B）";
+
+        // 真理値表ヘッダ
+        thCin.classList.toggle("hidden", mode !== "full");
+        thTotal.textContent = mode === "full" ? "A+B+Cin" : "A+B";
+        thCarry.textContent = mode === "full" ? "Cout" : "Carry";
+
+        // 遅延UI（全加算だけ）
+        rowDelayXOR2.classList.toggle("hidden", mode !== "full");
+        rowDelayAND2.classList.toggle("hidden", mode !== "full");
+        rowDelayOR.classList.toggle("hidden", mode !== "full");
+
+        // ステップ説明
+        stepLegend.textContent =
+          mode === "full" ? "0:入力 / 1:HA1 / 2:HA2 / 3:OR" : "0:入力 / 1:出力";
+
+        resetPropagation();
+        renderTruthTable();
+        update();
       }
 
-      // SVG wires + dots（分岐線も含めてON/OFFする）
-      const wires = {
+      btnModeFull.addEventListener("click", () => setMode("full"));
+      btnModeHalf.addEventListener("click", () => setMode("half"));
+
+      // ===== ゲートとflowDot（全加算） =====
+      const gateElsFull = {
+        XOR1: document.getElementById("G_XOR1"),
+        AND1: document.getElementById("G_AND1"),
+        XOR2: document.getElementById("G_XOR2"),
+        AND2: document.getElementById("G_AND2"),
+        OR: document.getElementById("G_OR"),
+      };
+      const flowDotsFull = [
+        document.getElementById("flow0"),
+        document.getElementById("flow1"),
+        document.getElementById("flow2"),
+        document.getElementById("flow3"),
+      ];
+
+      // ===== ゲートとflowDot（半加算） =====
+      const gateElsHalf = {
+        XOR1: document.getElementById("HG_XOR1"),
+        AND1: document.getElementById("HG_AND1"),
+      };
+      const flowDotsHalf = [
+        document.getElementById("Hflow0"),
+        document.getElementById("Hflow1"),
+      ];
+
+      function setActiveGate(name) {
+        const g = mode === "full" ? gateElsFull : gateElsHalf;
+        Object.values(g).forEach((el) => el?.classList.remove("active"));
+        if (name && g[name]) g[name].classList.add("active");
+      }
+      function setFlowDot(step) {
+        const list = mode === "full" ? flowDotsFull : flowDotsHalf;
+        list.forEach((d) => d?.classList.remove("on"));
+        if (step >= 0 && step < list.length) list[step]?.classList.add("on");
+      }
+
+      // ===== 配線（全加算） =====
+      const wiresFull = {
         A: [
           document.getElementById("wA_L"),
           document.getElementById("wA_R"),
@@ -877,6 +1081,32 @@
         ],
       };
 
+      // ===== 配線（半加算） =====
+      const wiresHalf = {
+        A: [
+          document.getElementById("HwA_L"),
+          document.getElementById("HwA_R"),
+          document.getElementById("HwA_to_AND"),
+          document.getElementById("HdA"),
+          document.getElementById("HjA"),
+        ],
+        B: [
+          document.getElementById("HwB_L"),
+          document.getElementById("HwB_R"),
+          document.getElementById("HwB_to_AND"),
+          document.getElementById("HdB"),
+          document.getElementById("HjB"),
+        ],
+        Sum: [
+          document.getElementById("HwSum"),
+          document.getElementById("HdSum"),
+        ],
+        Carry: [
+          document.getElementById("HwCarry"),
+          document.getElementById("HdCarry"),
+        ],
+      };
+
       function setOnOff(els, isOn) {
         els.forEach((el) => {
           if (!el) return;
@@ -884,52 +1114,65 @@
         });
       }
 
-      // ===== 真理値表生成 =====
-      const rows = [];
-      for (let A = 0; A <= 1; A++) {
-        for (let B = 0; B <= 1; B++) {
-          for (let Cin = 0; Cin <= 1; Cin++) {
-            const r = fullAdderByStructure(A, B, Cin);
-            rows.push({
-              A,
-              B,
-              Cin,
-              Sum: r.Sum,
-              Cout: r.Cout,
-              total: A + B + Cin,
-            });
+      // ===== 真理値表 =====
+      function renderTruthTable() {
+        ttBody.innerHTML = "";
+        if (mode === "full") {
+          // 8行
+          let idx = 0;
+          for (let A = 0; A <= 1; A++) {
+            for (let B = 0; B <= 1; B++) {
+              for (let Cin = 0; Cin <= 1; Cin++) {
+                const r = fullAdderByStructure(A, B, Cin);
+                const tr = document.createElement("tr");
+                tr.dataset.key = `${A}${B}${Cin}`;
+                tr.innerHTML = `
+                <td>${A}</td><td>${B}</td><td>${Cin}</td>
+                <td>${r.Sum}</td><td>${r.Cout}</td><td>${A + B + Cin}</td>
+              `;
+                ttBody.appendChild(tr);
+                idx++;
+              }
+            }
+          }
+        } else {
+          // 4行（Cin列は非表示にしている）
+          for (let A = 0; A <= 1; A++) {
+            for (let B = 0; B <= 1; B++) {
+              const r = halfAdder(A, B);
+              const tr = document.createElement("tr");
+              tr.dataset.key = `${A}${B}`;
+              tr.innerHTML = `
+              <td>${A}</td><td>${B}</td><td class="hidden">0</td>
+              <td>${r.Sum}</td><td>${r.Carry}</td><td>${A + B}</td>
+            `;
+              ttBody.appendChild(tr);
+            }
           }
         }
       }
 
-      function renderTruthTable() {
-        ttBody.innerHTML = "";
-        rows.forEach((r, idx) => {
-          const tr = document.createElement("tr");
-          tr.dataset.idx = String(idx);
-          tr.innerHTML = `<td>${r.A}</td><td>${r.B}</td><td>${r.Cin}</td><td>${r.Sum}</td><td>${r.Cout}</td><td>${r.total}</td>`;
-          ttBody.appendChild(tr);
-        });
-      }
-
       function highlightRow(A, B, Cin) {
-        const idx = rows.findIndex(
-          (r) => r.A === A && r.B === B && r.Cin === Cin
-        );
         [...ttBody.querySelectorAll("tr")].forEach((tr) =>
           tr.classList.remove("active")
         );
-        const target = ttBody.querySelector(`tr[data-idx="${idx}"]`);
+        const key = mode === "full" ? `${A}${B}${Cin}` : `${A}${B}`;
+        const target = ttBody.querySelector(`tr[data-key="${key}"]`);
         if (target) target.classList.add("active");
       }
 
       // ===== 伝搬（Propagation） =====
-      let propStep = 0; // 0..3
+      let propStep = 0;
       let playing = false;
       let timerId = null;
 
+      function maxStep() {
+        return mode === "full" ? 3 : 1;
+      }
+
       function setStep(n) {
-        propStep = Math.max(0, Math.min(3, n));
+        const m = maxStep();
+        propStep = Math.max(0, Math.min(m, n));
         propStepLabel.textContent = String(propStep);
       }
 
@@ -951,36 +1194,60 @@
         delayLabel.textContent = String(delayMs.value);
       });
 
-      function applyPropagation(A, B, Cin, r) {
-        // 全OFF
-        Object.values(wires).forEach((arr) => setOnOff(arr, false));
+      function gateDelayMsForStep(step) {
+        // full: 0入力 / 1HA1 / 2HA2 / 3OR
+        // half: 0入力 / 1出力（XOR1/AND1）
+        if (mode === "half") {
+          if (step === 1)
+            return Math.max(Number(dXOR1.value), Number(dAND1.value));
+          return 0;
+        }
+        if (step === 1)
+          return Math.max(Number(dXOR1.value), Number(dAND1.value));
+        if (step === 2)
+          return Math.max(Number(dXOR2.value), Number(dAND2.value));
+        if (step === 3) return Number(dOR.value);
+        return 0;
+      }
 
-        // 0:入力
+      function applyPropagationFull(A, B, Cin, r) {
+        Object.values(wiresFull).forEach((arr) => setOnOff(arr, false));
+
         if (propStep >= 0) {
-          setOnOff(wires.A, A);
-          setOnOff(wires.B, B);
-          setOnOff(wires.Cin, Cin);
+          setOnOff(wiresFull.A, A);
+          setOnOff(wiresFull.B, B);
+          setOnOff(wiresFull.Cin, Cin);
         }
-        // 1: XOR1/AND1（S1, C1）
         if (propStep >= 1) {
-          setOnOff(wires.S1, r.S1);
-          setOnOff(wires.C1, r.C1);
+          setOnOff(wiresFull.S1, r.S1);
+          setOnOff(wiresFull.C1, r.C1);
         }
-        // 2: XOR2/AND2（Sum, C2）
         if (propStep >= 2) {
-          setOnOff(wires.Sum, r.Sum);
-          setOnOff(wires.C2, r.C2);
+          setOnOff(wiresFull.Sum, r.Sum);
+          setOnOff(wiresFull.C2, r.C2);
         }
-        // 3: OR（Cout）
         if (propStep >= 3) {
-          setOnOff(wires.Cout, r.Cout);
+          setOnOff(wiresFull.Cout, r.Cout);
+        }
+      }
+
+      function applyPropagationHalf(A, B, r) {
+        Object.values(wiresHalf).forEach((arr) => setOnOff(arr, false));
+
+        if (propStep >= 0) {
+          setOnOff(wiresHalf.A, A);
+          setOnOff(wiresHalf.B, B);
+        }
+        if (propStep >= 1) {
+          setOnOff(wiresHalf.Sum, r.Sum);
+          setOnOff(wiresHalf.Carry, r.Carry);
         }
       }
 
       function stepOnce() {
         setStep(propStep + 1);
         update();
-        if (propStep >= 3) {
+        if (propStep >= maxStep()) {
           playing = false;
           clearTimer();
         }
@@ -988,13 +1255,12 @@
 
       function loopPlay() {
         if (!playing) return;
-        if (propStep >= 3) {
+        if (propStep >= maxStep()) {
           playing = false;
           clearTimer();
           return;
         }
         stepOnce();
-
         const dt = gateDelayMsForStep(propStep) || Number(delayMs.value);
         timerId = setTimeout(loopPlay, dt);
       }
@@ -1014,7 +1280,6 @@
       });
       btnReset.addEventListener("click", () => resetPropagation());
 
-      // 入力変更で伝搬リセット
       [elA, elB, elCin].forEach((el) =>
         el.addEventListener("change", () => resetPropagation())
       );
@@ -1028,41 +1293,64 @@
       function update() {
         const A = elA.checked ? 1 : 0;
         const B = elB.checked ? 1 : 0;
-        const Cin = elCin.checked ? 1 : 0;
+        const Cin = mode === "full" && elCin.checked ? 1 : 0;
 
-        binIn.textContent = `A B Cin = ${A} ${B} ${Cin}`;
-        decSum.textContent = String(A + B + Cin);
-
-        const r = fullAdderByStructure(A, B, Cin);
-
-        setBadge(sumBadge, r.Sum, "sum");
-        setBadge(coutBadge, r.Cout, "carry");
-
-        applyPropagation(A, B, Cin, r);
-        highlightRow(A, B, Cin);
-
-        // ステップに応じて「どこを見ているか」を表示
-        if (propStep === 0) {
-          setActiveGate(null);
-          setFlowDot(0);
+        if (mode === "full") {
+          binIn.textContent = `A B Cin = ${A} ${B} ${Cin}`;
+        } else {
+          binIn.textContent = `A B = ${A} ${B}`;
         }
-        if (propStep === 1) {
-          setActiveGate("XOR1");
-          setFlowDot(1);
-        }
-        if (propStep === 2) {
-          setActiveGate("XOR2");
-          setFlowDot(2);
-        }
-        if (propStep === 3) {
-          setActiveGate("OR");
-          setFlowDot(3);
+
+        if (mode === "full") {
+          const r = fullAdderByStructure(A, B, Cin);
+
+          setBadge(sumBadge, r.Sum, "sum");
+          setBadge(coutBadge, r.Cout, "carry");
+          decSum.textContent = String(A + B + Cin);
+
+          applyPropagationFull(A, B, Cin, r);
+          highlightRow(A, B, Cin);
+
+          if (propStep === 0) {
+            setActiveGate(null);
+            setFlowDot(0);
+          }
+          if (propStep === 1) {
+            setActiveGate("XOR1");
+            setFlowDot(1);
+          }
+          if (propStep === 2) {
+            setActiveGate("XOR2");
+            setFlowDot(2);
+          }
+          if (propStep === 3) {
+            setActiveGate("OR");
+            setFlowDot(3);
+          }
+        } else {
+          const r = halfAdder(A, B);
+
+          setBadge(sumBadge, r.Sum, "sum");
+          setBadge(coutBadge, r.Carry, "carry");
+          decSum.textContent = String(A + B);
+
+          applyPropagationHalf(A, B, r);
+          highlightRow(A, B, 0);
+
+          if (propStep === 0) {
+            setActiveGate(null);
+            setFlowDot(0);
+          }
+          if (propStep === 1) {
+            setActiveGate("XOR1");
+            setFlowDot(1);
+          }
         }
       }
 
       // ===== 初期化 =====
-      renderTruthTable();
       delayLabel.textContent = String(delayMs.value);
+      renderTruthTable();
       setStep(0);
       update();
     </script>
