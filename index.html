@@ -8,13 +8,18 @@
     <style>
       :root {
         --bg: #0b1220;
-        --panel: #101a30;
         --text: #e8eefc;
         --muted: #b7c3e6;
         --line: rgba(255, 255, 255, 0.12);
+
         --sum: #8ab4ff; /* Sum系 */
         --carry: #7ee787; /* Carry系 */
+
+        --wire: rgba(255, 255, 255, 0.3);
+        --gateStroke: rgba(255, 255, 255, 0.34);
+        --gateFill: rgba(16, 26, 48, 0.9);
       }
+
       body {
         margin: 0;
         font-family: system-ui, -apple-system, "Segoe UI", Roboto,
@@ -22,11 +27,13 @@
         background: radial-gradient(1000px 600px at 20% 0%, #17264a, var(--bg));
         color: var(--text);
       }
+
       header {
         max-width: 980px;
         margin: 0 auto;
         padding: 20px 16px 8px;
       }
+
       h1 {
         margin: 0 0 6px;
         font-size: 20px;
@@ -104,6 +111,7 @@
         border: 1px solid var(--line);
         position: relative;
         cursor: pointer;
+        display: inline-block;
       }
       .pill::after {
         content: "";
@@ -199,7 +207,6 @@
         color: #eaf2ff;
       }
 
-      /* 図 */
       .diagramWrap {
         border: 1px solid var(--line);
         border-radius: 12px;
@@ -231,36 +238,44 @@
           "Noto Sans JP", sans-serif;
       }
 
-      /* ゲート形状（ANSI/IEEE “distinctive shape” 寄せ） */
+      /* ゲート */
       .gate-outline {
-        fill: rgba(16, 26, 48, 0.92);
-        stroke: rgba(255, 255, 255, 0.3);
+        fill: var(--gateFill);
+        stroke: var(--gateStroke);
         stroke-width: 1.6;
+        stroke-linejoin: round;
       }
       .gate-inner {
-        stroke: rgba(255, 255, 255, 0.26);
-        stroke-width: 1.6;
+        stroke: rgba(255, 255, 255, 0.22);
+        stroke-width: 1.2;
         fill: none;
+        stroke-linecap: round;
       }
 
       /* 配線 */
       .wire {
-        stroke: rgba(255, 255, 255, 0.28);
+        stroke: var(--wire);
         stroke-width: 3.2;
         fill: none;
         stroke-linecap: round;
         stroke-linejoin: round;
       }
+
+      /* ノード */
+      .dot {
+        fill: rgba(255, 255, 255, 0.4);
+      }
+
+      /* ONの発光 */
       .wire.sum.on {
         stroke: var(--sum);
         filter: drop-shadow(0 0 6px rgba(138, 180, 255, 0.55));
+        stroke-opacity: 1;
       }
       .wire.carry.on {
         stroke: var(--carry);
         filter: drop-shadow(0 0 7px rgba(126, 231, 135, 0.55));
-      }
-      .dot {
-        fill: rgba(255, 255, 255, 0.35);
+        stroke-opacity: 1;
       }
       .dot.sum.on {
         fill: var(--sum);
@@ -269,6 +284,59 @@
       .dot.carry.on {
         fill: var(--carry);
         filter: drop-shadow(0 0 7px rgba(126, 231, 135, 0.55));
+      }
+
+      /* フェード（OFF時だけ薄く見せたい） */
+      .fadeMid {
+        stroke-opacity: 0.4;
+      }
+
+      /* ONのときは fadeMid の薄さを打ち消す（濃淡解消） */
+      .wire.on.fadeMid {
+        stroke-opacity: 1;
+      }
+
+      /* ステップでゲートを強調（枠ハイライト） */
+      .gateGroup .gate-outline {
+        transition: stroke 0.15s ease, filter 0.15s ease;
+      }
+      .gateGroup.active .gate-outline {
+        stroke: rgba(255, 255, 255, 0.75);
+        filter: drop-shadow(0 0 10px rgba(138, 180, 255, 0.25));
+      }
+
+      /* 今見ている信号のカーソル（流れる点） */
+      .flowDot {
+        opacity: 0;
+        transition: opacity 0.12s ease;
+        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.28));
+      }
+      .flowDot.on {
+        opacity: 1;
+      }
+
+      /* ゲート遅延UI */
+      .delayGrid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .delayRow {
+        display: grid;
+        grid-template-columns: 72px 1fr 52px;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .delayRow span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .delayRow input[type="range"] {
+        width: 100%;
       }
 
       table {
@@ -312,12 +380,13 @@
     </header>
 
     <main>
-      <!-- 左 -->
+      <!-- 左：入力/出力 -->
       <section class="card">
         <h2>入力 / 出力</h2>
 
         <div class="box">
           <h3>入力</h3>
+
           <div class="sw">
             <label for="A">A</label>
             <div>
@@ -325,6 +394,7 @@
               <label class="pill" for="A" aria-label="A切替"></label>
             </div>
           </div>
+
           <div class="sw">
             <label for="B">B</label>
             <div>
@@ -332,6 +402,7 @@
               <label class="pill" for="B" aria-label="B切替"></label>
             </div>
           </div>
+
           <div class="sw">
             <label for="Cin">Cin</label>
             <div>
@@ -364,11 +435,82 @@
 
         <div class="box" style="margin-top: 10px">
           <h3>伝搬（Propagation）</h3>
+
           <div style="display: flex; gap: 8px; flex-wrap: wrap">
             <button id="btnStep" type="button">次へ（伝搬）</button>
             <button id="btnPlay" type="button">再生</button>
             <button id="btnStop" type="button">停止</button>
             <button id="btnReset" type="button">リセット</button>
+          </div>
+
+          <div style="margin-top: 10px">
+            <div
+              style="color: var(--muted); font-size: 12.5px; margin-bottom: 6px"
+            >
+              ゲート別遅延（ms）
+            </div>
+            <div class="delayGrid">
+              <div class="delayRow">
+                <span>XOR1</span>
+                <input
+                  id="dXOR1"
+                  type="range"
+                  min="0"
+                  max="800"
+                  step="50"
+                  value="200"
+                />
+                <code id="dXOR1v">200</code>
+              </div>
+              <div class="delayRow">
+                <span>AND1</span>
+                <input
+                  id="dAND1"
+                  type="range"
+                  min="0"
+                  max="800"
+                  step="50"
+                  value="200"
+                />
+                <code id="dAND1v">200</code>
+              </div>
+              <div class="delayRow">
+                <span>XOR2</span>
+                <input
+                  id="dXOR2"
+                  type="range"
+                  min="0"
+                  max="800"
+                  step="50"
+                  value="200"
+                />
+                <code id="dXOR2v">200</code>
+              </div>
+              <div class="delayRow">
+                <span>AND2</span>
+                <input
+                  id="dAND2"
+                  type="range"
+                  min="0"
+                  max="800"
+                  step="50"
+                  value="200"
+                />
+                <code id="dAND2v">200</code>
+              </div>
+              <div class="delayRow">
+                <span>OR</span>
+                <input
+                  id="dOR"
+                  type="range"
+                  min="0"
+                  max="800"
+                  step="50"
+                  value="200"
+                />
+                <code id="dORv">200</code>
+              </div>
+            </div>
           </div>
 
           <div
@@ -379,7 +521,7 @@
               line-height: 1.8;
             "
           >
-            遅延：<span id="delayLabel">400</span>ms<br />
+            全体遅延（予備）：<span id="delayLabel">400</span>ms<br />
             <input
               id="delayMs"
               type="range"
@@ -395,7 +537,7 @@
         </div>
       </section>
 
-      <!-- 右 -->
+      <!-- 右：回路図＋真理値表 -->
       <section class="card">
         <h2>回路図（MIL/ANSI系 記号）</h2>
 
@@ -405,7 +547,6 @@
             <p class="hint">青：Sum系 / 緑：Carry系</p>
           </div>
 
-          <!-- ====== ここが “ズレない版” のSVG ====== -->
           <svg
             viewBox="0 0 860 260"
             width="100%"
@@ -413,139 +554,171 @@
             aria-label="全加算回路（MIL/ANSI系）"
           >
             <defs>
-              <!-- ゲートのサイズ W=90, H=60 -->
+              <!-- AND: 幅60 高さ60（出力x=+60） -->
               <g id="GATE_AND">
                 <path
                   class="gate-outline"
-                  d="M0,0 L60,0
-           A30,30 0 0 1 60,60
-           L0,60 Z"
+                  d="M0,0 L30,0
+                   A30,30 0 0 1 30,60
+                   L0,60 Z"
                 />
               </g>
 
+              <!-- OR: 左端を x=0 にして、入力線が途切れないようにする -->
               <g id="GATE_OR">
                 <path
                   class="gate-outline"
-                  d="M8,0
-           C32,0 56,12 74,30
-           C56,48 32,60 8,60
-           C22,44 22,16 8,0
-           Z"
+                  d="M0,0
+                   C24,0 50,12 74,30
+                   C50,48 24,60 0,60
+                   C14,44 14,16 0,0
+                   Z"
                 />
-                <path class="gate-inner" d="M0,8 C14,22 14,38 0,52" />
+                <path class="gate-inner" d="M-8,8 C6,22 6,38 -8,52" />
               </g>
 
+              <!-- XOR: OR + extra curve（さらにもう1本左カーブ） -->
               <g id="GATE_XOR">
-                <path class="gate-inner" d="M-8,8 C6,22 6,38 -8,52" />
+                <path class="gate-inner" d="M-16,8 C-2,22 -2,38 -16,52" />
                 <use href="#GATE_OR" />
               </g>
             </defs>
 
-            <!-- =======================================================
-       1) 配線を先に描く（重要：ゲートより先）
-       2) ゲート境界に突っ込まないように終点を -8px ずらす
-     ======================================================= -->
-
-            <!-- 入出力ラベル -->
-            <text x="30" y="75" font-size="13">A</text>
-            <text x="30" y="115" font-size="13">B</text>
-            <text x="25" y="195" font-size="13">Cin</text>
+            <!-- ラベル -->
+            <text x="30" y="70" font-size="13">A</text>
+            <text x="30" y="90" font-size="13">B</text>
+            <text x="25" y="205" font-size="13">Cin</text>
 
             <text x="830" y="120" font-size="13">Sum</text>
             <text x="830" y="160" font-size="13">Cout</text>
 
-            <!-- ===== 配線（終端をゲート手前で止める） ===== -->
-            <!-- ゲート左上：XOR1(180,45) AND1(180,155) XOR2(420,85) AND2(420,155) OR(650,120) -->
-            <!-- 端子基準：inX = gateX, しかし輪郭が左へ出るので、線は gateX-8 で止める -->
-            <!-- OR入力も同様に gateX-8 で止める -->
+            <!-- ===== 配線（先に描く） ===== -->
+            <!-- 入力ノード -->
+            <circle id="dA" class="dot sum" cx="60" cy="65" r="4"></circle>
+            <circle id="dB" class="dot sum" cx="60" cy="85" r="4"></circle>
+            <circle id="dCin" class="dot sum" cx="60" cy="200" r="4"></circle>
 
-            <!-- A / B -> XOR1（x=180 の手前 172 まで） -->
-            <path id="wA" class="wire sum" d="M60 70 L172 70"></path>
-            <circle id="dA" class="dot sum" cx="60" cy="70" r="4"></circle>
-
-            <path id="wB" class="wire sum" d="M60 110 L172 110"></path>
-            <circle id="dB" class="dot sum" cx="60" cy="110" r="4"></circle>
-
-            <!-- Cin -> 分岐点 -->
-            <path id="wCin" class="wire sum" d="M60 190 L360 190"></path>
-            <circle id="dCin" class="dot sum" cx="60" cy="190" r="4"></circle>
-
-            <!-- Cin 分岐 -> XOR2 in2 / AND2 in2（どちらも x=420 の手前 412 まで） -->
+            <!-- A 分岐（XOR1/AND1） -->
+            <path id="wA_L" class="wire sum" d="M60 65 L150 65"></path>
+            <path id="wA_R" class="wire sum" d="M150 65 L200 65"></path>
             <path
-              class="wire sum"
-              d="M360 190 L360 125 L412 125"
-              opacity="0.6"
+              id="wA_to_AND1"
+              class="wire sum fadeMid"
+              d="M150 65 L150 175 L200 175"
+            ></path>
+            <circle id="jA" class="dot sum" cx="150" cy="65" r="3"></circle>
+
+            <!-- B 分岐（XOR1/AND1） -->
+            <path id="wB_L" class="wire sum" d="M60 85 L160 85"></path>
+            <path id="wB_R" class="wire sum" d="M160 85 L200 85"></path>
+            <path
+              id="wB_to_AND1"
+              class="wire sum fadeMid"
+              d="M160 85 L160 195 L200 195"
+            ></path>
+            <circle id="jB" class="dot sum" cx="160" cy="85" r="3"></circle>
+
+            <!-- Cin 分岐（XOR2/AND2） -->
+            <path id="wCin" class="wire sum" d="M60 200 L360 200"></path>
+            <path
+              id="wCin_to_XOR2"
+              class="wire sum fadeMid"
+              d="M360 200 L360 125 L440 125"
             ></path>
             <path
-              class="wire sum"
-              d="M360 190 L360 195 L412 195"
-              opacity="0.6"
+              id="wCin_to_AND2"
+              class="wire sum fadeMid"
+              d="M360 200 L360 195 L440 195"
             ></path>
 
-            <!-- XOR1 出力 S1：まず分岐点へ（出力側は輪郭にかぶりにくいのでそのまま） -->
-            <path id="wS1" class="wire sum" d="M270 75 L330 75"></path>
-            <circle id="dS1" class="dot sum" cx="270" cy="75" r="4"></circle>
-
-            <!-- S1 分岐 -> XOR2 in1 / AND2 in1（x=420 の手前 412 まで） -->
+            <!-- S1（XOR1出力） -->
+            <path id="wS1" class="wire sum" d="M274 75 L330 75"></path>
+            <circle id="dS1" class="dot sum" cx="274" cy="75" r="4"></circle>
             <path
-              class="wire sum"
-              d="M330 75 L330 105 L412 105"
-              opacity="0.6"
+              id="wS1_to_XOR2"
+              class="wire sum fadeMid"
+              d="M330 75 L330 105 L440 105"
             ></path>
             <path
-              class="wire sum"
-              d="M330 75 L330 175 L412 175"
-              opacity="0.6"
+              id="wS1_to_AND2"
+              class="wire sum fadeMid"
+              d="M330 75 L330 175 L440 175"
             ></path>
 
-            <!-- AND1 出力 C1 -> OR in1（ORの入力は x=650 の手前 642 で止める） -->
+            <!-- C1（AND1出力） -> OR in1（AND2を避けて上側へ迂回） -->
             <path
               id="wC1"
               class="wire carry"
-              d="M270 185 L610 185 L642 140"
+              d="M260 185 L340 185 L340 145 L610 145 L660 140"
             ></path>
-            <circle id="dC1" class="dot carry" cx="270" cy="185" r="4"></circle>
+            <circle id="dC1" class="dot carry" cx="260" cy="185" r="4"></circle>
 
-            <!-- XOR2 出力 Sum -->
-            <path id="wSum" class="wire sum" d="M510 115 L820 115"></path>
-            <circle id="dSum" class="dot sum" cx="510" cy="115" r="4"></circle>
+            <!-- Sum（XOR2出力） -->
+            <path id="wSum" class="wire sum" d="M514 115 L820 115"></path>
+            <circle id="dSum" class="dot sum" cx="514" cy="115" r="4"></circle>
 
-            <!-- AND2 出力 C2 -> OR in2（x=650 の手前 642） -->
+            <!-- C2（AND2出力） -> OR in2 -->
             <path
               id="wC2"
               class="wire carry"
-              d="M510 185 L610 185 L642 160"
+              d="M500 185 L620 185 L660 160"
             ></path>
-            <circle id="dC2" class="dot carry" cx="510" cy="185" r="4"></circle>
+            <circle id="dC2" class="dot carry" cx="500" cy="185" r="4"></circle>
 
-            <!-- OR 出力 Cout -->
-            <path id="wCout" class="wire carry" d="M740 150 L820 150"></path>
+            <!-- Cout（OR出力） -->
+            <path id="wCout" class="wire carry" d="M734 150 L820 150"></path>
             <circle
               id="dCout"
               class="dot carry"
-              cx="740"
+              cx="734"
               cy="150"
               r="4"
             ></circle>
 
-            <!-- ===== ゲート（最後に描く：配線の上に被せる） ===== -->
-            <use href="#GATE_XOR" transform="translate(180 45)" />
-            <text x="225" y="78" text-anchor="middle" font-size="12">XOR</text>
+            <!-- ===== ゲート（最後に描いて配線を自然に隠す） ===== -->
+            <g id="G_XOR1" class="gateGroup">
+              <use href="#GATE_XOR" transform="translate(200 45)" />
+              <text x="237" y="78" text-anchor="middle" font-size="12">
+                XOR
+              </text>
+            </g>
 
-            <use href="#GATE_AND" transform="translate(180 155)" />
-            <text x="225" y="190" text-anchor="middle" font-size="12">AND</text>
+            <g id="G_AND1" class="gateGroup">
+              <use href="#GATE_AND" transform="translate(200 155)" />
+              <text x="230" y="190" text-anchor="middle" font-size="12">
+                AND
+              </text>
+            </g>
 
-            <use href="#GATE_XOR" transform="translate(420 85)" />
-            <text x="465" y="118" text-anchor="middle" font-size="12">XOR</text>
+            <g id="G_XOR2" class="gateGroup">
+              <use href="#GATE_XOR" transform="translate(440 85)" />
+              <text x="477" y="118" text-anchor="middle" font-size="12">
+                XOR
+              </text>
+            </g>
 
-            <use href="#GATE_AND" transform="translate(420 155)" />
-            <text x="465" y="190" text-anchor="middle" font-size="12">AND</text>
+            <g id="G_AND2" class="gateGroup">
+              <use href="#GATE_AND" transform="translate(440 155)" />
+              <text x="470" y="190" text-anchor="middle" font-size="12">
+                AND
+              </text>
+            </g>
 
-            <use href="#GATE_OR" transform="translate(650 120)" />
-            <text x="695" y="153" text-anchor="middle" font-size="12">OR</text>
+            <g id="G_OR" class="gateGroup">
+              <use href="#GATE_OR" transform="translate(660 120)" />
+              <text x="697" y="153" text-anchor="middle" font-size="12">
+                OR
+              </text>
+            </g>
+
+            <!-- “今見ている信号”カーソル -->
+            <circle id="flow0" class="flowDot" cx="140" cy="65" r="4"></circle>
+            <circle id="flow1" class="flowDot" cx="300" cy="75" r="4"></circle>
+            <circle id="flow2" class="flowDot" cx="500" cy="115" r="4"></circle>
+            <circle id="flow3" class="flowDot" cx="710" cy="150" r="4"></circle>
 
             <!-- 補助 -->
-            <text x="190" y="242" font-size="12" fill="rgba(183,195,230,.9)">
+            <text x="220" y="242" font-size="12" fill="rgba(183,195,230,.9)">
               S1 = A ⊕ B / C1 = A ∧ B / C2 = S1 ∧ Cin
             </text>
           </svg>
@@ -606,12 +779,95 @@
       // 真理値表
       const ttBody = document.getElementById("ttBody");
 
-      // SVG wires + dots
+      // --- ゲートのDOM（ハイライト用） ---
+      const gateEls = {
+        XOR1: document.getElementById("G_XOR1"),
+        AND1: document.getElementById("G_AND1"),
+        XOR2: document.getElementById("G_XOR2"),
+        AND2: document.getElementById("G_AND2"),
+        OR: document.getElementById("G_OR"),
+      };
+
+      // --- flowDot（カーソル） ---
+      const flowDots = [
+        document.getElementById("flow0"),
+        document.getElementById("flow1"),
+        document.getElementById("flow2"),
+        document.getElementById("flow3"),
+      ];
+
+      function setActiveGate(name) {
+        Object.values(gateEls).forEach((g) => g?.classList.remove("active"));
+        if (name && gateEls[name]) gateEls[name].classList.add("active");
+      }
+      function setFlowDot(step) {
+        flowDots.forEach((d) => d?.classList.remove("on"));
+        if (step >= 0 && step < flowDots.length)
+          flowDots[step]?.classList.add("on");
+      }
+
+      // --- ゲート別遅延 ---
+      const dXOR1 = document.getElementById("dXOR1");
+      const dAND1 = document.getElementById("dAND1");
+      const dXOR2 = document.getElementById("dXOR2");
+      const dAND2 = document.getElementById("dAND2");
+      const dOR = document.getElementById("dOR");
+
+      const dXOR1v = document.getElementById("dXOR1v");
+      const dAND1v = document.getElementById("dAND1v");
+      const dXOR2v = document.getElementById("dXOR2v");
+      const dAND2v = document.getElementById("dAND2v");
+      const dORv = document.getElementById("dORv");
+
+      function bindDelay(rangeEl, valueEl) {
+        const sync = () => (valueEl.textContent = String(rangeEl.value));
+        rangeEl.addEventListener("input", sync);
+        sync();
+      }
+      bindDelay(dXOR1, dXOR1v);
+      bindDelay(dAND1, dAND1v);
+      bindDelay(dXOR2, dXOR2v);
+      bindDelay(dAND2, dAND2v);
+      bindDelay(dOR, dORv);
+
+      function gateDelayMsForStep(step) {
+        // step: 0入力 / 1HA1 / 2HA2 / 3OR
+        if (step === 1)
+          return Math.max(Number(dXOR1.value), Number(dAND1.value));
+        if (step === 2)
+          return Math.max(Number(dXOR2.value), Number(dAND2.value));
+        if (step === 3) return Number(dOR.value);
+        return 0;
+      }
+
+      // SVG wires + dots（分岐線も含めてON/OFFする）
       const wires = {
-        A: [document.getElementById("wA"), document.getElementById("dA")],
-        B: [document.getElementById("wB"), document.getElementById("dB")],
-        Cin: [document.getElementById("wCin"), document.getElementById("dCin")],
-        S1: [document.getElementById("wS1"), document.getElementById("dS1")],
+        A: [
+          document.getElementById("wA_L"),
+          document.getElementById("wA_R"),
+          document.getElementById("wA_to_AND1"),
+          document.getElementById("dA"),
+          document.getElementById("jA"),
+        ],
+        B: [
+          document.getElementById("wB_L"),
+          document.getElementById("wB_R"),
+          document.getElementById("wB_to_AND1"),
+          document.getElementById("dB"),
+          document.getElementById("jB"),
+        ],
+        Cin: [
+          document.getElementById("wCin"),
+          document.getElementById("wCin_to_XOR2"),
+          document.getElementById("wCin_to_AND2"),
+          document.getElementById("dCin"),
+        ],
+        S1: [
+          document.getElementById("wS1"),
+          document.getElementById("wS1_to_XOR2"),
+          document.getElementById("wS1_to_AND2"),
+          document.getElementById("dS1"),
+        ],
         C1: [document.getElementById("wC1"), document.getElementById("dC1")],
         Sum: [document.getElementById("wSum"), document.getElementById("dSum")],
         C2: [document.getElementById("wC2"), document.getElementById("dC2")],
@@ -676,12 +932,14 @@
         propStep = Math.max(0, Math.min(3, n));
         propStepLabel.textContent = String(propStep);
       }
+
       function clearTimer() {
         if (timerId !== null) {
           clearTimeout(timerId);
           timerId = null;
         }
       }
+
       function resetPropagation() {
         playing = false;
         clearTimer();
@@ -703,17 +961,17 @@
           setOnOff(wires.B, B);
           setOnOff(wires.Cin, Cin);
         }
-        // 1: XOR1/AND1
+        // 1: XOR1/AND1（S1, C1）
         if (propStep >= 1) {
           setOnOff(wires.S1, r.S1);
           setOnOff(wires.C1, r.C1);
         }
-        // 2: XOR2/AND2
+        // 2: XOR2/AND2（Sum, C2）
         if (propStep >= 2) {
           setOnOff(wires.Sum, r.Sum);
           setOnOff(wires.C2, r.C2);
         }
-        // 3: OR
+        // 3: OR（Cout）
         if (propStep >= 3) {
           setOnOff(wires.Cout, r.Cout);
         }
@@ -736,7 +994,9 @@
           return;
         }
         stepOnce();
-        timerId = setTimeout(loopPlay, Number(delayMs.value));
+
+        const dt = gateDelayMsForStep(propStep) || Number(delayMs.value);
+        timerId = setTimeout(loopPlay, dt);
       }
 
       btnStep.addEventListener("click", () => stepOnce());
@@ -745,7 +1005,8 @@
         playing = true;
         clearTimer();
         if (propStep === 0) stepOnce();
-        timerId = setTimeout(loopPlay, Number(delayMs.value));
+        const dt = gateDelayMsForStep(propStep) || Number(delayMs.value);
+        timerId = setTimeout(loopPlay, dt);
       });
       btnStop.addEventListener("click", () => {
         playing = false;
@@ -779,6 +1040,24 @@
 
         applyPropagation(A, B, Cin, r);
         highlightRow(A, B, Cin);
+
+        // ステップに応じて「どこを見ているか」を表示
+        if (propStep === 0) {
+          setActiveGate(null);
+          setFlowDot(0);
+        }
+        if (propStep === 1) {
+          setActiveGate("XOR1");
+          setFlowDot(1);
+        }
+        if (propStep === 2) {
+          setActiveGate("XOR2");
+          setFlowDot(2);
+        }
+        if (propStep === 3) {
+          setActiveGate("OR");
+          setFlowDot(3);
+        }
       }
 
       // ===== 初期化 =====
