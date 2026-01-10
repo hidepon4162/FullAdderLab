@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>擬似言語IDE（簡易）</title>
+    <style>
+      :root {
+        --bg: #0b0f14;
+        --panel: #111824;
+        --line: #223044;
+        --text: #e6edf3;
+        --muted: #9fb0c0;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, "Noto Sans JP", sans-serif;
+      }
+      header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      button {
+        background: #1d2a3d;
+        border: 1px solid var(--line);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 12px;
+        cursor: pointer;
+      }
+      .wrap {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 12px;
+        padding: 12px;
+        height: calc(100vh - 60px);
+        box-sizing: border-box;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .card h2 {
+        margin: 0;
+        padding: 10px 12px;
+        font-size: 12px;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+      }
+      textarea,
+      pre {
+        flex: 1;
+        border: 0;
+        background: transparent;
+        color: #fff;
+        font-family: ui-monospace, monospace;
+        font-size: 13px;
+        padding: 12px;
+        box-sizing: border-box;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+      .right {
+        display: grid;
+        grid-template-rows: 1fr 1fr 1.2fr auto;
+        gap: 12px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        height: 180px;
+      }
+      .pill {
+        padding: 4px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>擬似言語IDE（簡易）</strong>
+      <button id="runBtn">実行</button>
+      <button id="stepBtn">ステップ</button>
+      <button id="resetBtn">リセット</button>
+      <button id="helpBtn">使い方</button>
+      <span class="pill" id="pcInfo">PC: -</span>
+      <span class="pill" id="stateInfo">状態: -</span>
+    </header>
+
+    <div class="wrap">
+      <div class="card">
+        <h2>コード</h2>
+        <textarea id="code"></textarea>
+      </div>
+
+      <div class="right">
+        <div class="card">
+          <h2>変数</h2>
+          <pre id="vars"></pre>
+        </div>
+        <div class="card">
+          <h2>出力</h2>
+          <pre id="out"></pre>
+        </div>
+        <div class="card">
+          <h2>使い方サンプル</h2>
+          <pre id="help"></pre>
+        </div>
+        <div class="row">
+          <div class="card">
+            <h2>入力</h2>
+            <textarea id="inp"></textarea>
+          </div>
+          <div class="card">
+            <h2>エラー</h2>
+            <pre id="err"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      $("code").value = `sum ← 0
+FOR i ← 1 TO 5
+  sum ← sum + i
+ENDFOR
+PRINT sum`;
+
+      $("help").textContent = `■ FORの例
+sum ← 0
+FOR i ← 1 TO 5
+  sum ← sum + i
+ENDFOR
+PRINT sum
+→ 出力: 15`;
+
+      let program, vm;
+
+      function parse(code) {
+        const lines = code
+          .split("\n")
+          .map((l) => l.split("#")[0].trim())
+          .filter((l) => l);
+        const p = [];
+        const stack = [];
+        lines.forEach((l, i) => {
+          if (/^FOR/.test(l)) {
+            const [, v, s, e] = l.match(/^FOR (\w+) ← (.+) TO (.+)$/);
+            p.push({ op: "FOR_INIT", v, s, e, after: null });
+            stack.push(p.length - 1);
+          } else if (l === "ENDFOR") {
+            const at = stack.pop();
+            p.push({ op: "FOR_NEXT", forAt: at });
+            p[at].after = p.length;
+          } else if (/^PRINT/.test(l)) {
+            p.push({ op: "PRINT", e: l.slice(6) });
+          } else if (/←/.test(l)) {
+            const [v, e] = l.split("←").map((s) => s.trim());
+            p.push({ op: "SET", v, e });
+          }
+        });
+        return p;
+      }
+
+      function createVM(p) {
+        const vars = {};
+        const out = [];
+        let pc = 0;
+        let halted = false;
+        const forEnd = {};
+
+        const val = (e) =>
+          Function(
+            ...Object.keys(vars),
+            `return ${e}`
+          )(...Object.values(vars)) || 0;
+
+        return {
+          step() {
+            if (halted || pc >= p.length) {
+              halted = true;
+              return;
+            }
+            const ins = p[pc];
+            switch (ins.op) {
+              case "SET":
+                vars[ins.v] = val(ins.e);
+                pc++;
+                break;
+              case "PRINT":
+                out.push(val(ins.e));
+                pc++;
+                break;
+              case "FOR_INIT":
+                vars[ins.v] = val(ins.s);
+                forEnd[pc] = val(ins.e);
+                pc = vars[ins.v] <= forEnd[pc] ? pc + 1 : ins.after;
+                break;
+              case "FOR_NEXT":
+                {
+                  const init = p[ins.forAt];
+                  vars[init.v]++;
+                  pc =
+                    vars[init.v] <= forEnd[ins.forAt]
+                      ? ins.forAt + 1
+                      : init.after;
+                }
+                break;
+            }
+            if (pc >= p.length) halted = true;
+          },
+          run() {
+            while (!halted) this.step();
+          },
+          dump() {
+            return Object.entries(vars)
+              .map(([k, v]) => `${k} = ${v}`)
+              .join("\n");
+          },
+          get pc() {
+            return pc;
+          },
+          get halted() {
+            return halted;
+          },
+          get out() {
+            return out.join("\n");
+          },
+        };
+      }
+
+      function render() {
+        $("pcInfo").textContent = "PC: " + (vm ? vm.pc : "-");
+        $("stateInfo").textContent =
+          "状態: " + (vm ? (vm.halted ? "停止" : "実行中") : "-");
+        $("vars").textContent = vm ? vm.dump() : "";
+        $("out").textContent = vm ? vm.out : "";
+      }
+
+      function reset() {
+        $("err").textContent = "";
+        try {
+          program = parse($("code").value);
+          vm = createVM(program);
+          render();
+        } catch (e) {
+          $("err").textContent = e.message;
+        }
+      }
+
+      $("runBtn").onclick = () => {
+        if (!vm) reset();
+        vm.run();
+        render();
+      };
+      $("stepBtn").onclick = () => {
+        if (!vm) reset();
+        vm.step();
+        render();
+      };
+      $("resetBtn").onclick = reset;
+      $("helpBtn").onclick = () => ($("help").scrollTop = 0);
+
+      reset();
+    </script>
+  </body>
+</html>
