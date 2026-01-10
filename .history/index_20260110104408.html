@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>GlowAdder – 全加算回路 伝搬シミュレータ</title>
+    <title>GlowAdder-MIL | 全加算回路（伝搬可視化）</title>
 
     <style>
       :root {
@@ -12,34 +12,35 @@
         --text: #e8eefc;
         --muted: #b7c3e6;
         --line: rgba(255, 255, 255, 0.12);
-        --ok: #7ee787;
-        --blue: #8ab4ff;
+        --sum: #8ab4ff; /* Sum系 */
+        --carry: #7ee787; /* Carry系 */
       }
       body {
         margin: 0;
         font-family: system-ui, -apple-system, "Segoe UI", Roboto,
-          "Noto Sans JP", sans-serif;
+          "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
         background: radial-gradient(1000px 600px at 20% 0%, #17264a, var(--bg));
         color: var(--text);
       }
       header {
         max-width: 980px;
-        margin: auto;
+        margin: 0 auto;
         padding: 20px 16px 8px;
       }
       h1 {
-        margin: 0;
+        margin: 0 0 6px;
         font-size: 20px;
       }
       p {
-        margin: 4px 0 0;
+        margin: 0;
         color: var(--muted);
         font-size: 14px;
+        line-height: 1.6;
       }
 
       main {
         max-width: 980px;
-        margin: auto;
+        margin: 0 auto;
         padding: 12px 16px 28px;
         display: grid;
         grid-template-columns: 360px 1fr;
@@ -56,6 +57,7 @@
         border: 1px solid var(--line);
         border-radius: 12px;
         padding: 14px;
+        backdrop-filter: blur(8px);
       }
       .card h2 {
         margin: 0 0 10px;
@@ -69,15 +71,12 @@
         background: rgba(0, 0, 0, 0.12);
       }
       .box h3 {
-        margin: 0 0 8px;
+        margin: 0 0 10px;
         font-size: 13px;
         color: var(--muted);
+        letter-spacing: 0.02em;
       }
 
-      .switchRow {
-        display: grid;
-        gap: 10px;
-      }
       .sw {
         display: grid;
         grid-template-columns: 40px 1fr;
@@ -87,7 +86,16 @@
         border-radius: 10px;
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.04);
+        margin-bottom: 8px;
       }
+      .sw:last-child {
+        margin-bottom: 0;
+      }
+      .sw label {
+        font-size: 14px;
+        color: var(--text);
+      }
+
       .pill {
         width: 40px;
         height: 26px;
@@ -105,19 +113,19 @@
         width: 18px;
         height: 18px;
         border-radius: 50%;
-        background: #fff;
-        transition: 0.18s;
+        background: rgba(255, 255, 255, 0.75);
+        transition: transform 0.18s ease;
       }
       input[type="checkbox"] {
         display: none;
       }
-      input:checked + .pill {
+      input[type="checkbox"]:checked + .pill {
         background: rgba(138, 180, 255, 0.22);
         border-color: rgba(138, 180, 255, 0.45);
       }
-      input:checked + .pill::after {
+      input[type="checkbox"]:checked + .pill::after {
         transform: translateX(14px);
-        background: var(--blue);
+        background: var(--sum);
       }
 
       .out {
@@ -129,21 +137,32 @@
         border-radius: 10px;
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.04);
+        margin-bottom: 8px;
       }
+      .out:last-child {
+        margin-bottom: 0;
+      }
+
       .badge {
         min-width: 44px;
         text-align: center;
         padding: 6px 10px;
         border-radius: 10px;
         font-weight: 700;
+        letter-spacing: 0.04em;
         border: 1px solid var(--line);
+        background: rgba(0, 0, 0, 0.18);
+        color: rgba(255, 255, 255, 0.85);
       }
-      .badge.on {
-        color: var(--ok);
-        border-color: rgba(126, 231, 135, 0.6);
+      .badge.on.sum {
+        border-color: rgba(138, 180, 255, 0.55);
+        background: rgba(138, 180, 255, 0.12);
+        color: var(--sum);
       }
-      .badge.off {
-        color: #ccc;
+      .badge.on.carry {
+        border-color: rgba(126, 231, 135, 0.55);
+        background: rgba(126, 231, 135, 0.12);
+        color: var(--carry);
       }
 
       button {
@@ -153,64 +172,143 @@
         padding: 8px 10px;
         border-radius: 10px;
         cursor: pointer;
+        font-size: 13px;
       }
       button:hover {
-        background: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.1);
+      }
+      button:active {
+        transform: translateY(1px);
       }
 
+      .kv {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px dashed rgba(255, 255, 255, 0.16);
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        color: #eaf2ff;
+      }
+
+      /* 図 */
       .diagramWrap {
         border: 1px solid var(--line);
         border-radius: 12px;
+        background: rgba(0, 0, 0, 0.1);
         padding: 10px;
-        background: rgba(0, 0, 0, 0.12);
+        overflow: hidden;
         margin-bottom: 12px;
       }
-      svg text {
-        fill: #e8eefc;
+      .diagramTitle {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        margin: 0 0 8px;
+      }
+      .diagramTitle h3 {
+        margin: 0;
+        font-size: 14px;
+      }
+      .diagramTitle .hint {
+        margin: 0;
         font-size: 12px;
+        color: var(--muted);
       }
-      .blk {
-        fill: #101a30;
-        stroke: #555;
-        stroke-width: 1.2;
+
+      svg text {
+        fill: rgba(232, 238, 252, 0.92);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+          "Noto Sans JP", sans-serif;
       }
-      .wire {
-        stroke: #666;
-        stroke-width: 3;
+
+      /* ゲート形状（ANSI/IEEE “distinctive shape” 寄せ） */
+      .gate-outline {
+        fill: rgba(16, 26, 48, 0.92);
+        stroke: rgba(255, 255, 255, 0.3);
+        stroke-width: 1.6;
+      }
+      .gate-inner {
+        stroke: rgba(255, 255, 255, 0.26);
+        stroke-width: 1.6;
         fill: none;
       }
-      .wire.on {
-        stroke: var(--blue);
-        filter: drop-shadow(0 0 6px var(--blue));
+
+      /* 配線 */
+      .wire {
+        stroke: rgba(255, 255, 255, 0.28);
+        stroke-width: 3.2;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .wire.sum.on {
+        stroke: var(--sum);
+        filter: drop-shadow(0 0 6px rgba(138, 180, 255, 0.55));
       }
       .wire.carry.on {
-        stroke: var(--ok);
-        filter: drop-shadow(0 0 6px var(--ok));
+        stroke: var(--carry);
+        filter: drop-shadow(0 0 7px rgba(126, 231, 135, 0.55));
+      }
+      .dot {
+        fill: rgba(255, 255, 255, 0.35);
+      }
+      .dot.sum.on {
+        fill: var(--sum);
+        filter: drop-shadow(0 0 6px rgba(138, 180, 255, 0.55));
+      }
+      .dot.carry.on {
+        fill: var(--carry);
+        filter: drop-shadow(0 0 7px rgba(126, 231, 135, 0.55));
       }
 
       table {
         width: 100%;
         border-collapse: collapse;
-        border: 1px solid var(--line);
-        border-radius: 12px;
         overflow: hidden;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(0, 0, 0, 0.12);
+        font-size: 13px;
       }
       th,
       td {
-        padding: 8px;
-        text-align: center;
+        padding: 10px;
         border-bottom: 1px solid var(--line);
+        text-align: center;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      tr:last-child td {
+        border-bottom: 0;
       }
       tr.active td {
-        background: rgba(138, 180, 255, 0.15);
+        background: rgba(138, 180, 255, 0.12);
+        border-bottom-color: rgba(138, 180, 255, 0.25);
       }
     </style>
   </head>
 
   <body>
     <header>
-      <h1>GlowAdder</h1>
-      <p>全加算回路（HA + HA + OR）― 信号の伝搬を段階的に可視化</p>
+      <h1>GlowAdder-MIL</h1>
+      <p>
+        全加算回路（Full
+        Adder）を、ANSI/IEEE（通称MIL）系の論理記号（XOR/AND/OR）で表示。<br />
+        伝搬（入力→中間→出力）をステップ実行／自動再生で確認できます。
+      </p>
     </header>
 
     <main>
@@ -220,34 +318,31 @@
 
         <div class="box">
           <h3>入力</h3>
-          <div class="switchRow">
-            <div class="sw">
-              <label>A</label>
-              <div>
-                <input id="A" type="checkbox" /><label
-                  class="pill"
-                  for="A"
-                ></label>
-              </div>
+          <div class="sw">
+            <label for="A">A</label>
+            <div>
+              <input id="A" type="checkbox" />
+              <label class="pill" for="A" aria-label="A切替"></label>
             </div>
-            <div class="sw">
-              <label>B</label>
-              <div>
-                <input id="B" type="checkbox" /><label
-                  class="pill"
-                  for="B"
-                ></label>
-              </div>
+          </div>
+          <div class="sw">
+            <label for="B">B</label>
+            <div>
+              <input id="B" type="checkbox" />
+              <label class="pill" for="B" aria-label="B切替"></label>
             </div>
-            <div class="sw">
-              <label>Cin</label>
-              <div>
-                <input id="Cin" type="checkbox" /><label
-                  class="pill"
-                  for="Cin"
-                ></label>
-              </div>
+          </div>
+          <div class="sw">
+            <label for="Cin">Cin</label>
+            <div>
+              <input id="Cin" type="checkbox" />
+              <label class="pill" for="Cin" aria-label="Cin切替"></label>
             </div>
+          </div>
+
+          <div class="kv">
+            <div>現在の入力（2進）</div>
+            <div><code id="binIn">A B Cin = 0 0 0</code></div>
           </div>
         </div>
 
@@ -255,74 +350,207 @@
           <h3>出力</h3>
           <div class="out">
             <div>Sum</div>
-            <div class="badge off" id="Sum">0</div>
+            <div class="badge" id="SumBadge">0</div>
           </div>
-          <div class="out" style="margin-top: 6px">
+          <div class="out">
             <div>Cout</div>
-            <div class="badge off" id="Cout">0</div>
+            <div class="badge" id="CoutBadge">0</div>
+          </div>
+          <div class="kv">
+            <div>合計（A + B + Cin）</div>
+            <div><code id="decSum">0</code></div>
           </div>
         </div>
 
         <div class="box" style="margin-top: 10px">
-          <h3>伝搬制御</h3>
-          <div style="display: flex; gap: 6px; flex-wrap: wrap">
-            <button id="stepBtn">次へ</button>
-            <button id="playBtn">再生</button>
-            <button id="stopBtn">停止</button>
-            <button id="resetBtn">リセット</button>
+          <h3>伝搬（Propagation）</h3>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <button id="btnStep" type="button">次へ（伝搬）</button>
+            <button id="btnPlay" type="button">再生</button>
+            <button id="btnStop" type="button">停止</button>
+            <button id="btnReset" type="button">リセット</button>
           </div>
-          <div style="margin-top: 6px; color: var(--muted); font-size: 12px">
-            遅延
+
+          <div
+            style="
+              margin-top: 10px;
+              color: var(--muted);
+              font-size: 12.5px;
+              line-height: 1.8;
+            "
+          >
+            遅延：<span id="delayLabel">400</span>ms<br />
             <input
-              id="delay"
+              id="delayMs"
               type="range"
               min="100"
               max="1200"
               step="100"
               value="400"
+              style="width: 100%"
             />
-            <span id="delayVal">400</span>ms / ステップ
-            <span id="stepVal">0</span>
+            ステップ：<code id="propStep">0</code>（0:入力 / 1:HA1 / 2:HA2 /
+            3:OR）
           </div>
         </div>
       </section>
 
       <!-- 右 -->
       <section class="card">
-        <h2>回路図（伝搬）</h2>
+        <h2>回路図（MIL/ANSI系 記号）</h2>
 
         <div class="diagramWrap">
-          <svg viewBox="0 0 820 200" width="100%">
-            <rect x="140" y="30" width="160" height="100" rx="12" class="blk" />
-            <text x="220" y="60" text-anchor="middle">HA1</text>
+          <div class="diagramTitle">
+            <h3>XOR + XOR → Sum / AND + AND → OR → Cout（Full Adder）</h3>
+            <p class="hint">青：Sum系 / 緑：Carry系</p>
+          </div>
 
-            <rect x="380" y="80" width="160" height="100" rx="12" class="blk" />
-            <text x="460" y="110" text-anchor="middle">HA2</text>
+          <!-- ====== ここが “ズレない版” のSVG ====== -->
+          <svg
+            viewBox="0 0 860 260"
+            width="100%"
+            height="auto"
+            aria-label="全加算回路（MIL/ANSI系）"
+          >
+            <defs>
+              <!-- 共通：ゲートのサイズ（W=90, H=60）に統一 -->
+              <!-- AND: flat left + semicircle right (D-shape) -->
+              <g id="GATE_AND">
+                <path
+                  class="gate-outline"
+                  d="M0,0 L60,0
+                   A30,30 0 0 1 60,60
+                   L0,60 Z"
+                />
+              </g>
 
-            <rect x="620" y="40" width="160" height="100" rx="12" class="blk" />
-            <text x="700" y="70" text-anchor="middle">OR</text>
+              <!-- OR: ANSI/IEEE distinctive shape -->
+              <g id="GATE_OR">
+                <path
+                  class="gate-outline"
+                  d="M8,0
+                   C32,0 56,12 74,30
+                   C56,48 32,60 8,60
+                   C22,44 22,16 8,0
+                   Z"
+                />
+                <path class="gate-inner" d="M0,8 C14,22 14,38 0,52" />
+              </g>
 
-            <path id="wA" class="wire" d="M40 50 L140 50" />
-            <path id="wB" class="wire" d="M40 100 L140 100" />
-            <path id="wCin" class="wire" d="M40 170 L380 170" />
+              <!-- XOR = OR + extra input curve -->
+              <g id="GATE_XOR">
+                <path class="gate-inner" d="M-8,8 C6,22 6,38 -8,52" />
+                <use href="#GATE_OR" />
+              </g>
+            </defs>
 
-            <path id="wS1" class="wire" d="M300 50 L380 50 L380 100" />
-            <path id="wC1" class="wire carry" d="M300 120 L620 120" />
+            <!-- ゲート配置（端子に合わせて固定） -->
+            <use href="#GATE_XOR" transform="translate(180 45)" />
+            <text x="225" y="78" text-anchor="middle" font-size="12">XOR</text>
 
-            <path id="wSum" class="wire" d="M540 120 L800 120" />
-            <path id="wC2" class="wire carry" d="M540 170 L620 170" />
-            <path id="wCout" class="wire carry" d="M780 80 L800 80" />
+            <use href="#GATE_AND" transform="translate(180 155)" />
+            <text x="225" y="190" text-anchor="middle" font-size="12">AND</text>
 
-            <text x="20" y="55">A</text>
-            <text x="20" y="105">B</text>
-            <text x="20" y="175">Cin</text>
-            <text x="805" y="125">Sum</text>
-            <text x="805" y="85">Cout</text>
+            <use href="#GATE_XOR" transform="translate(420 85)" />
+            <text x="465" y="118" text-anchor="middle" font-size="12">XOR</text>
+
+            <use href="#GATE_AND" transform="translate(420 155)" />
+            <text x="465" y="190" text-anchor="middle" font-size="12">AND</text>
+
+            <use href="#GATE_OR" transform="translate(650 120)" />
+            <text x="695" y="153" text-anchor="middle" font-size="12">OR</text>
+
+            <!-- 入出力ラベル -->
+            <text x="30" y="75" font-size="13">A</text>
+            <text x="30" y="115" font-size="13">B</text>
+            <text x="25" y="195" font-size="13">Cin</text>
+
+            <text x="830" y="120" font-size="13">Sum</text>
+            <text x="830" y="160" font-size="13">Cout</text>
+
+            <!-- 配線：端子座標に一致 -->
+            <!-- XOR1: in1(180,65) in2(180,85) out(270,75) -->
+            <!-- AND1: in1(180,175) in2(180,195) out(270,185) -->
+            <!-- XOR2: in1(420,105) in2(420,125) out(510,115) -->
+            <!-- AND2: in1(420,175) in2(420,195) out(510,185) -->
+            <!-- OR  : in1(650,140) in2(650,160) out(740,150) -->
+
+            <!-- A / B -->
+            <path id="wA" class="wire sum" d="M60 70 L180 70"></path>
+            <circle id="dA" class="dot sum" cx="60" cy="70" r="4"></circle>
+
+            <path id="wB" class="wire sum" d="M60 110 L180 110"></path>
+            <circle id="dB" class="dot sum" cx="60" cy="110" r="4"></circle>
+
+            <!-- Cin：分岐 -->
+            <path id="wCin" class="wire sum" d="M60 190 L360 190"></path>
+            <circle id="dCin" class="dot sum" cx="60" cy="190" r="4"></circle>
+
+            <path
+              class="wire sum"
+              d="M360 190 L360 125 L420 125"
+              opacity="0.6"
+            ></path>
+            <path
+              class="wire sum"
+              d="M360 190 L360 195 L420 195"
+              opacity="0.6"
+            ></path>
+
+            <!-- S1：分岐 -->
+            <path id="wS1" class="wire sum" d="M270 75 L330 75"></path>
+            <circle id="dS1" class="dot sum" cx="270" cy="75" r="4"></circle>
+
+            <path
+              class="wire sum"
+              d="M330 75 L330 105 L420 105"
+              opacity="0.6"
+            ></path>
+            <path
+              class="wire sum"
+              d="M330 75 L330 175 L420 175"
+              opacity="0.6"
+            ></path>
+
+            <!-- C1 -> OR(in1) -->
+            <path
+              id="wC1"
+              class="wire carry"
+              d="M270 185 L610 185 L650 140"
+            ></path>
+            <circle id="dC1" class="dot carry" cx="270" cy="185" r="4"></circle>
+
+            <!-- Sum -->
+            <path id="wSum" class="wire sum" d="M510 115 L820 115"></path>
+            <circle id="dSum" class="dot sum" cx="510" cy="115" r="4"></circle>
+
+            <!-- C2 -> OR(in2) -->
+            <path
+              id="wC2"
+              class="wire carry"
+              d="M510 185 L610 185 L650 160"
+            ></path>
+            <circle id="dC2" class="dot carry" cx="510" cy="185" r="4"></circle>
+
+            <!-- Cout -->
+            <path id="wCout" class="wire carry" d="M740 150 L820 150"></path>
+            <circle
+              id="dCout"
+              class="dot carry"
+              cx="740"
+              cy="150"
+              r="4"
+            ></circle>
+
+            <!-- 補助 -->
+            <text x="190" y="242" font-size="12" fill="rgba(183,195,230,.9)">
+              S1 = A ⊕ B / C1 = A ∧ B / C2 = S1 ∧ Cin
+            </text>
           </svg>
         </div>
 
-        <h2>真理値表</h2>
-        <table>
+        <h2>真理値表（該当行をハイライト）</h2>
+        <table aria-label="全加算回路の真理値表">
           <thead>
             <tr>
               <th>A</th>
@@ -330,124 +558,231 @@
               <th>Cin</th>
               <th>Sum</th>
               <th>Cout</th>
+              <th>A+B+Cin</th>
             </tr>
           </thead>
-          <tbody id="tt"></tbody>
+          <tbody id="ttBody"></tbody>
         </table>
       </section>
     </main>
 
     <script>
-      const $ = (id) => document.getElementById(id);
-      const xor = (a, b) => a ^ b,
-        and = (a, b) => a & b,
-        or = (a, b) => a | b;
+      // ===== ロジック =====
+      const xor = (a, b) => (a ^ b) & 1;
+      const and = (a, b) => a & b & 1;
+      const or = (a, b) => (a | b) & 1;
 
-      let step = 0,
-        playing = false,
-        timer = null;
-
-      const wires = {
-        A: $("wA"),
-        B: $("wB"),
-        Cin: $("wCin"),
-        S1: $("wS1"),
-        C1: $("wC1"),
-        Sum: $("wSum"),
-        C2: $("wC2"),
-        Cout: $("wCout"),
-      };
-
-      function setWire(w, on) {
-        w.classList.toggle("on", on);
-      }
-      function calc(A, B, C) {
-        const S1 = xor(A, B),
-          C1 = and(A, B);
-        const Sum = xor(S1, C),
-          C2 = and(S1, C);
-        return { S1, C1, Sum, C2, Cout: or(C1, C2) };
-      }
-      function update() {
-        const A = $("A").checked | 0,
-          B = $("B").checked | 0,
-          C = $("Cin").checked | 0;
-        const r = calc(A, B, C);
-        $("Sum").textContent = r.Sum;
-        $("Cout").textContent = r.Cout;
-        $("Sum").className = "badge " + (r.Sum ? "on" : "off");
-        $("Cout").className = "badge " + (r.Cout ? "on" : "off");
-
-        Object.values(wires).forEach((w) => w.classList.remove("on"));
-        if (step >= 0) {
-          setWire(wires.A, A);
-          setWire(wires.B, B);
-          setWire(wires.Cin, C);
-        }
-        if (step >= 1) {
-          setWire(wires.S1, r.S1);
-          setWire(wires.C1, r.C1);
-        }
-        if (step >= 2) {
-          setWire(wires.Sum, r.Sum);
-          setWire(wires.C2, r.C2);
-        }
-        if (step >= 3) {
-          setWire(wires.Cout, r.Cout);
-        }
-        $("stepVal").textContent = step;
-        highlight(A, B, C);
-      }
-      function next() {
-        step = Math.min(3, step + 1);
-        update();
-      }
-      function play() {
-        if (playing) return;
-        playing = true;
-        const loop = () => {
-          if (step >= 3) {
-            playing = false;
-            return;
-          }
-          next();
-          timer = setTimeout(loop, $("delay").value);
-        };
-        loop();
-      }
-      function stop() {
-        playing = false;
-        clearTimeout(timer);
-      }
-      function reset() {
-        stop();
-        step = 0;
-        update();
+      function fullAdderByStructure(A, B, Cin) {
+        const S1 = xor(A, B);
+        const C1 = and(A, B);
+        const Sum = xor(S1, Cin);
+        const C2 = and(S1, Cin);
+        const Cout = or(C1, C2);
+        return { S1, C1, Sum, C2, Cout };
       }
 
-      $("stepBtn").onclick = next;
-      $("playBtn").onclick = play;
-      $("stopBtn").onclick = stop;
-      $("resetBtn").onclick = reset;
-      $("delay").oninput = (e) => ($("delayVal").textContent = e.target.value);
-      ["A", "B", "Cin"].forEach((id) => ($(id).onchange = reset));
+      // ===== DOM =====
+      const elA = document.getElementById("A");
+      const elB = document.getElementById("B");
+      const elCin = document.getElementById("Cin");
+
+      const binIn = document.getElementById("binIn");
+      const decSum = document.getElementById("decSum");
+
+      const sumBadge = document.getElementById("SumBadge");
+      const coutBadge = document.getElementById("CoutBadge");
+
+      // 伝搬UI
+      const btnStep = document.getElementById("btnStep");
+      const btnPlay = document.getElementById("btnPlay");
+      const btnStop = document.getElementById("btnStop");
+      const btnReset = document.getElementById("btnReset");
+      const delayMs = document.getElementById("delayMs");
+      const delayLabel = document.getElementById("delayLabel");
+      const propStepLabel = document.getElementById("propStep");
 
       // 真理値表
-      const tt = $("tt");
-      for (let A = 0; A < 2; A++)
-        for (let B = 0; B < 2; B++)
-          for (let C = 0; C < 2; C++) {
-            const r = calc(A, B, C);
-            const tr = document.createElement("tr");
-            tr.dataset.k = `${A}${B}${C}`;
-            tr.innerHTML = `<td>${A}</td><td>${B}</td><td>${C}</td><td>${r.Sum}</td><td>${r.Cout}</td>`;
-            tt.appendChild(tr);
-          }
-      function highlight(A, B, C) {
-        [...tt.children].forEach((tr) =>
-          tr.classList.toggle("active", tr.dataset.k === `${A}${B}${C}`)
-        );
+      const ttBody = document.getElementById("ttBody");
+
+      // SVG wires + dots
+      const wires = {
+        A: [document.getElementById("wA"), document.getElementById("dA")],
+        B: [document.getElementById("wB"), document.getElementById("dB")],
+        Cin: [document.getElementById("wCin"), document.getElementById("dCin")],
+        S1: [document.getElementById("wS1"), document.getElementById("dS1")],
+        C1: [document.getElementById("wC1"), document.getElementById("dC1")],
+        Sum: [document.getElementById("wSum"), document.getElementById("dSum")],
+        C2: [document.getElementById("wC2"), document.getElementById("dC2")],
+        Cout: [
+          document.getElementById("wCout"),
+          document.getElementById("dCout"),
+        ],
+      };
+
+      function setOnOff(els, isOn) {
+        els.forEach((el) => {
+          if (!el) return;
+          el.classList.toggle("on", !!isOn);
+        });
       }
+
+      // ===== 真理値表生成 =====
+      const rows = [];
+      for (let A = 0; A <= 1; A++) {
+        for (let B = 0; B <= 1; B++) {
+          for (let Cin = 0; Cin <= 1; Cin++) {
+            const r = fullAdderByStructure(A, B, Cin);
+            rows.push({
+              A,
+              B,
+              Cin,
+              Sum: r.Sum,
+              Cout: r.Cout,
+              total: A + B + Cin,
+            });
+          }
+        }
+      }
+
+      function renderTruthTable() {
+        ttBody.innerHTML = "";
+        rows.forEach((r, idx) => {
+          const tr = document.createElement("tr");
+          tr.dataset.idx = String(idx);
+          tr.innerHTML = `<td>${r.A}</td><td>${r.B}</td><td>${r.Cin}</td><td>${r.Sum}</td><td>${r.Cout}</td><td>${r.total}</td>`;
+          ttBody.appendChild(tr);
+        });
+      }
+
+      function highlightRow(A, B, Cin) {
+        const idx = rows.findIndex(
+          (r) => r.A === A && r.B === B && r.Cin === Cin
+        );
+        [...ttBody.querySelectorAll("tr")].forEach((tr) =>
+          tr.classList.remove("active")
+        );
+        const target = ttBody.querySelector(`tr[data-idx="${idx}"]`);
+        if (target) target.classList.add("active");
+      }
+
+      // ===== 伝搬（Propagation） =====
+      let propStep = 0; // 0..3
+      let playing = false;
+      let timerId = null;
+
+      function setStep(n) {
+        propStep = Math.max(0, Math.min(3, n));
+        propStepLabel.textContent = String(propStep);
+      }
+      function clearTimer() {
+        if (timerId !== null) {
+          clearTimeout(timerId);
+          timerId = null;
+        }
+      }
+      function resetPropagation() {
+        playing = false;
+        clearTimer();
+        setStep(0);
+        update();
+      }
+
+      delayMs.addEventListener("input", () => {
+        delayLabel.textContent = String(delayMs.value);
+      });
+
+      function applyPropagation(A, B, Cin, r) {
+        // 全OFF
+        Object.values(wires).forEach((arr) => setOnOff(arr, false));
+
+        // 0:入力
+        if (propStep >= 0) {
+          setOnOff(wires.A, A);
+          setOnOff(wires.B, B);
+          setOnOff(wires.Cin, Cin);
+        }
+        // 1: XOR1/AND1
+        if (propStep >= 1) {
+          setOnOff(wires.S1, r.S1);
+          setOnOff(wires.C1, r.C1);
+        }
+        // 2: XOR2/AND2
+        if (propStep >= 2) {
+          setOnOff(wires.Sum, r.Sum);
+          setOnOff(wires.C2, r.C2);
+        }
+        // 3: OR
+        if (propStep >= 3) {
+          setOnOff(wires.Cout, r.Cout);
+        }
+      }
+
+      function stepOnce() {
+        setStep(propStep + 1);
+        update();
+        if (propStep >= 3) {
+          playing = false;
+          clearTimer();
+        }
+      }
+
+      function loopPlay() {
+        if (!playing) return;
+        if (propStep >= 3) {
+          playing = false;
+          clearTimer();
+          return;
+        }
+        stepOnce();
+        timerId = setTimeout(loopPlay, Number(delayMs.value));
+      }
+
+      btnStep.addEventListener("click", () => stepOnce());
+      btnPlay.addEventListener("click", () => {
+        if (playing) return;
+        playing = true;
+        clearTimer();
+        if (propStep === 0) stepOnce();
+        timerId = setTimeout(loopPlay, Number(delayMs.value));
+      });
+      btnStop.addEventListener("click", () => {
+        playing = false;
+        clearTimer();
+      });
+      btnReset.addEventListener("click", () => resetPropagation());
+
+      // 入力変更で伝搬リセット
+      [elA, elB, elCin].forEach((el) =>
+        el.addEventListener("change", () => resetPropagation())
+      );
+
+      // ===== 出力表示 =====
+      function setBadge(el, v, kind) {
+        el.textContent = String(v);
+        el.className = "badge" + (v === 1 ? ` on ${kind}` : "");
+      }
+
+      function update() {
+        const A = elA.checked ? 1 : 0;
+        const B = elB.checked ? 1 : 0;
+        const Cin = elCin.checked ? 1 : 0;
+
+        binIn.textContent = `A B Cin = ${A} ${B} ${Cin}`;
+        decSum.textContent = String(A + B + Cin);
+
+        const r = fullAdderByStructure(A, B, Cin);
+
+        setBadge(sumBadge, r.Sum, "sum");
+        setBadge(coutBadge, r.Cout, "carry");
+
+        applyPropagation(A, B, Cin, r);
+        highlightRow(A, B, Cin);
+      }
+
+      // ===== 初期化 =====
+      renderTruthTable();
+      delayLabel.textContent = String(delayMs.value);
+      setStep(0);
       update();
     </script>
   </body>

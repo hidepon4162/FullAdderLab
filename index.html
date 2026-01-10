@@ -405,6 +405,7 @@
             <p class="hint">青：Sum系 / 緑：Carry系</p>
           </div>
 
+          <!-- ====== ここが “ズレない版” のSVG ====== -->
           <svg
             viewBox="0 0 860 260"
             width="100%"
@@ -412,132 +413,139 @@
             aria-label="全加算回路（MIL/ANSI系）"
           >
             <defs>
-              <!-- AND: flat left + semicircle right (D-shape) -->
+              <!-- ゲートのサイズ W=90, H=60 -->
               <g id="GATE_AND">
                 <path
                   class="gate-outline"
-                  d="M0,0 L36,0
-                   A30,30 0 0 1 36,60
-                   L0,60 Z"
+                  d="M0,0 L60,0
+           A30,30 0 0 1 60,60
+           L0,60 Z"
                 />
               </g>
 
-              <!-- OR: ANSI/IEEE distinctive shape -->
               <g id="GATE_OR">
                 <path
                   class="gate-outline"
-                  d="M6,0
-                   C26,0 44,10 58,30
-                   C44,50 26,60 6,60
-                   C16,44 16,16 6,0
-                   Z"
+                  d="M8,0
+           C32,0 56,12 74,30
+           C56,48 32,60 8,60
+           C22,44 22,16 8,0
+           Z"
                 />
-                <path class="gate-inner" d="M0,6 C12,22 12,38 0,54" />
+                <path class="gate-inner" d="M0,8 C14,22 14,38 0,52" />
               </g>
 
-              <!-- XOR = OR + extra input curve -->
               <g id="GATE_XOR">
-                <path class="gate-inner" d="M-7,6 C5,22 5,38 -7,54" />
+                <path class="gate-inner" d="M-8,8 C6,22 6,38 -8,52" />
                 <use href="#GATE_OR" />
               </g>
             </defs>
 
-            <!-- 入力ラベル -->
-            <text x="30" y="60" font-size="13">A</text>
-            <text x="30" y="100" font-size="13">B</text>
-            <text x="25" y="190" font-size="13">Cin</text>
+            <!-- =======================================================
+       1) 配線を先に描く（重要：ゲートより先）
+       2) ゲート境界に突っ込まないように終点を -8px ずらす
+     ======================================================= -->
 
-            <!-- ゲート配置 -->
-            <!-- XOR1 (A,B) -->
-            <use href="#GATE_XOR" transform="translate(180 35) scale(1.2)" />
-            <text x="235" y="78" text-anchor="middle" font-size="12">XOR</text>
+            <!-- 入出力ラベル -->
+            <text x="30" y="75" font-size="13">A</text>
+            <text x="30" y="115" font-size="13">B</text>
+            <text x="25" y="195" font-size="13">Cin</text>
 
-            <!-- AND1 (A,B) -->
-            <use href="#GATE_AND" transform="translate(180 150) scale(1.0)" />
-            <text x="215" y="185" text-anchor="middle" font-size="12">AND</text>
+            <text x="830" y="120" font-size="13">Sum</text>
+            <text x="830" y="160" font-size="13">Cout</text>
 
-            <!-- XOR2 (S1,Cin) -->
-            <use href="#GATE_XOR" transform="translate(420 75) scale(1.2)" />
-            <text x="475" y="118" text-anchor="middle" font-size="12">XOR</text>
+            <!-- ===== 配線（終端をゲート手前で止める） ===== -->
+            <!-- ゲート左上：XOR1(180,45) AND1(180,155) XOR2(420,85) AND2(420,155) OR(650,120) -->
+            <!-- 端子基準：inX = gateX, しかし輪郭が左へ出るので、線は gateX-8 で止める -->
+            <!-- OR入力も同様に gateX-8 で止める -->
 
-            <!-- AND2 (S1,Cin) -->
-            <use href="#GATE_AND" transform="translate(420 165) scale(1.0)" />
-            <text x="455" y="200" text-anchor="middle" font-size="12">AND</text>
+            <!-- A / B -> XOR1（x=180 の手前 172 まで） -->
+            <path id="wA" class="wire sum" d="M60 70 L172 70"></path>
+            <circle id="dA" class="dot sum" cx="60" cy="70" r="4"></circle>
 
-            <!-- OR (C1,C2) -->
-            <use href="#GATE_OR" transform="translate(650 120) scale(1.2)" />
-            <text x="705" y="156" text-anchor="middle" font-size="12">OR</text>
+            <path id="wB" class="wire sum" d="M60 110 L172 110"></path>
+            <circle id="dB" class="dot sum" cx="60" cy="110" r="4"></circle>
 
-            <!-- 配線（入力） -->
-            <path id="wA" class="wire sum" d="M 60 55 L 180 55"></path>
-            <circle id="dA" class="dot sum" cx="60" cy="55" r="4"></circle>
+            <!-- Cin -> 分岐点 -->
+            <path id="wCin" class="wire sum" d="M60 190 L360 190"></path>
+            <circle id="dCin" class="dot sum" cx="60" cy="190" r="4"></circle>
 
-            <path id="wB" class="wire sum" d="M 60 95 L 180 95"></path>
-            <circle id="dB" class="dot sum" cx="60" cy="95" r="4"></circle>
-
+            <!-- Cin 分岐 -> XOR2 in2 / AND2 in2（どちらも x=420 の手前 412 まで） -->
             <path
-              id="wCin"
               class="wire sum"
-              d="M 60 185 L 380 185 L 380 150 L 420 150"
+              d="M360 190 L360 125 L412 125"
+              opacity="0.6"
             ></path>
-            <circle id="dCin" class="dot sum" cx="60" cy="185" r="4"></circle>
-
-            <!-- XOR1出力 S1（分岐して XOR2 と AND2 に入る） -->
             <path
-              id="wS1"
               class="wire sum"
-              d="M 250 71 L 330 71 L 330 111 L 420 111"
+              d="M360 190 L360 195 L412 195"
+              opacity="0.6"
             ></path>
-            <circle id="dS1" class="dot sum" cx="250" cy="71" r="4"></circle>
 
-            <!-- AND1出力 C1 → OR（上入力） -->
+            <!-- XOR1 出力 S1：まず分岐点へ（出力側は輪郭にかぶりにくいのでそのまま） -->
+            <path id="wS1" class="wire sum" d="M270 75 L330 75"></path>
+            <circle id="dS1" class="dot sum" cx="270" cy="75" r="4"></circle>
+
+            <!-- S1 分岐 -> XOR2 in1 / AND2 in1（x=420 の手前 412 まで） -->
+            <path
+              class="wire sum"
+              d="M330 75 L330 105 L412 105"
+              opacity="0.6"
+            ></path>
+            <path
+              class="wire sum"
+              d="M330 75 L330 175 L412 175"
+              opacity="0.6"
+            ></path>
+
+            <!-- AND1 出力 C1 -> OR in1（ORの入力は x=650 の手前 642 で止める） -->
             <path
               id="wC1"
               class="wire carry"
-              d="M 246 180 L 560 180 L 650 145"
+              d="M270 185 L610 185 L642 140"
             ></path>
-            <circle id="dC1" class="dot carry" cx="246" cy="180" r="4"></circle>
+            <circle id="dC1" class="dot carry" cx="270" cy="185" r="4"></circle>
 
-            <!-- XOR2出力 Sum -->
-            <path id="wSum" class="wire sum" d="M 490 111 L 820 111"></path>
-            <circle id="dSum" class="dot sum" cx="490" cy="111" r="4"></circle>
-            <text x="830" y="115" font-size="13">Sum</text>
+            <!-- XOR2 出力 Sum -->
+            <path id="wSum" class="wire sum" d="M510 115 L820 115"></path>
+            <circle id="dSum" class="dot sum" cx="510" cy="115" r="4"></circle>
 
-            <!-- AND2入力（S1 と Cin を AND2 に）: 見た目だけの短い引き込み -->
-            <!-- S1 → AND2 -->
-            <path
-              class="wire sum"
-              d="M 330 71 L 330 195 L 420 195"
-              opacity="0.35"
-            ></path>
-            <!-- Cin → AND2 -->
-            <path
-              class="wire sum"
-              d="M 380 185 L 380 215 L 420 215"
-              opacity="0.35"
-            ></path>
-
-            <!-- AND2出力 C2 → OR（下入力） -->
+            <!-- AND2 出力 C2 -> OR in2（x=650 の手前 642） -->
             <path
               id="wC2"
               class="wire carry"
-              d="M 486 195 L 610 195 L 650 175"
+              d="M510 185 L610 185 L642 160"
             ></path>
-            <circle id="dC2" class="dot carry" cx="486" cy="195" r="4"></circle>
+            <circle id="dC2" class="dot carry" cx="510" cy="185" r="4"></circle>
 
-            <!-- OR出力 Cout -->
-            <path id="wCout" class="wire carry" d="M 720 156 L 820 156"></path>
+            <!-- OR 出力 Cout -->
+            <path id="wCout" class="wire carry" d="M740 150 L820 150"></path>
             <circle
               id="dCout"
               class="dot carry"
-              cx="720"
-              cy="156"
+              cx="740"
+              cy="150"
               r="4"
             ></circle>
-            <text x="830" y="160" font-size="13">Cout</text>
 
-            <!-- 補助ラベル -->
-            <text x="180" y="245" font-size="12" fill="rgba(183,195,230,.9)">
+            <!-- ===== ゲート（最後に描く：配線の上に被せる） ===== -->
+            <use href="#GATE_XOR" transform="translate(180 45)" />
+            <text x="225" y="78" text-anchor="middle" font-size="12">XOR</text>
+
+            <use href="#GATE_AND" transform="translate(180 155)" />
+            <text x="225" y="190" text-anchor="middle" font-size="12">AND</text>
+
+            <use href="#GATE_XOR" transform="translate(420 85)" />
+            <text x="465" y="118" text-anchor="middle" font-size="12">XOR</text>
+
+            <use href="#GATE_AND" transform="translate(420 155)" />
+            <text x="465" y="190" text-anchor="middle" font-size="12">AND</text>
+
+            <use href="#GATE_OR" transform="translate(650 120)" />
+            <text x="695" y="153" text-anchor="middle" font-size="12">OR</text>
+
+            <!-- 補助 -->
+            <text x="190" y="242" font-size="12" fill="rgba(183,195,230,.9)">
               S1 = A ⊕ B / C1 = A ∧ B / C2 = S1 ∧ Cin
             </text>
           </svg>
@@ -567,13 +575,10 @@
       const or = (a, b) => (a | b) & 1;
 
       function fullAdderByStructure(A, B, Cin) {
-        // XOR1
         const S1 = xor(A, B);
         const C1 = and(A, B);
-        // XOR2
         const Sum = xor(S1, Cin);
         const C2 = and(S1, Cin);
-        // OR
         const Cout = or(C1, C2);
         return { S1, C1, Sum, C2, Cout };
       }
@@ -689,26 +694,26 @@
       });
 
       function applyPropagation(A, B, Cin, r) {
-        // いったん全OFF
+        // 全OFF
         Object.values(wires).forEach((arr) => setOnOff(arr, false));
 
-        // ステップ0: 入力
+        // 0:入力
         if (propStep >= 0) {
           setOnOff(wires.A, A);
           setOnOff(wires.B, B);
           setOnOff(wires.Cin, Cin);
         }
-        // ステップ1: XOR1/AND1の結果（S1,C1）
+        // 1: XOR1/AND1
         if (propStep >= 1) {
           setOnOff(wires.S1, r.S1);
           setOnOff(wires.C1, r.C1);
         }
-        // ステップ2: XOR2/AND2の結果（Sum,C2）
+        // 2: XOR2/AND2
         if (propStep >= 2) {
           setOnOff(wires.Sum, r.Sum);
           setOnOff(wires.C2, r.C2);
         }
-        // ステップ3: ORの結果（Cout）
+        // 3: OR
         if (propStep >= 3) {
           setOnOff(wires.Cout, r.Cout);
         }
@@ -748,7 +753,7 @@
       });
       btnReset.addEventListener("click", () => resetPropagation());
 
-      // 入力変更で伝搬をリセット
+      // 入力変更で伝搬リセット
       [elA, elB, elCin].forEach((el) =>
         el.addEventListener("change", () => resetPropagation())
       );
