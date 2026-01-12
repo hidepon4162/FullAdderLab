@@ -585,8 +585,9 @@
             <p class="hint">青：Sum系 / 緑：Carry系</p>
           </div>
 
+          <!-- viewBoxを縦に拡張（260→340） -->
           <svg
-            viewBox="0 0 860 260"
+            viewBox="0 0 860 340"
             width="100%"
             height="auto"
             aria-label="全加算回路（MIL/ANSI系）"
@@ -619,127 +620,139 @@
               </g>
             </defs>
 
-            <text x="30" y="70" font-size="13">A</text>
-            <text x="30" y="90" font-size="13">B</text>
-            <text x="25" y="205" font-size="13">Cin</text>
-            <text x="830" y="120" font-size="13">Sum</text>
-            <text x="830" y="160" font-size="13">Cout</text>
+            <!-- 入力/出力ラベル（Yを下へ広げる） -->
+            <text x="30" y="95" font-size="13">A</text>
+            <text x="30" y="125" font-size="13">B</text>
+            <text x="25" y="285" font-size="13">Cin</text>
+            <text x="830" y="165" font-size="13">Sum</text>
+            <text x="830" y="215" font-size="13">Cout</text>
 
-            <circle id="dA" class="dot sum" cx="60" cy="65" r="4"></circle>
-            <circle id="dB" class="dot sum" cx="60" cy="85" r="4"></circle>
-            <circle id="dCin" class="dot sum" cx="60" cy="200" r="4"></circle>
+            <!-- 入力ノード -->
+            <circle id="dA" class="dot sum" cx="60" cy="90" r="4"></circle>
+            <circle id="dB" class="dot sum" cx="60" cy="120" r="4"></circle>
+            <circle id="dCin" class="dot sum" cx="60" cy="280" r="4"></circle>
 
-            <path id="wA_L" class="wire sum" d="M60 65 L150 65"></path>
-            <path id="wA_R" class="wire sum" d="M150 65 L200 65"></path>
+            <!-- A 分岐（XOR/AND） -->
+            <path id="wA_L" class="wire sum" d="M60 90 L150 90"></path>
+            <path id="wA_R" class="wire sum" d="M150 90 L200 90"></path>
+            <!-- AND1へ：入力間隔を広げるため、AND1の入力Yに合わせて落とす -->
             <path
               id="wA_to_AND1"
               class="wire sum fadeMid"
-              d="M150 65 L150 175 L200 175"
+              d="M150 90 L150 230 L200 230"
             ></path>
-            <circle id="jA" class="dot sum" cx="150" cy="65" r="3"></circle>
+            <circle id="jA" class="dot sum" cx="150" cy="90" r="3"></circle>
 
-            <path id="wB_L" class="wire sum" d="M60 85 L160 85"></path>
-            <path id="wB_R" class="wire sum" d="M160 85 L200 85"></path>
+            <!-- B 分岐（XOR/AND） -->
+            <path id="wB_L" class="wire sum" d="M60 120 L160 120"></path>
+            <path id="wB_R" class="wire sum" d="M160 120 L200 120"></path>
             <path
               id="wB_to_AND1"
               class="wire sum fadeMid"
-              d="M160 85 L160 195 L200 195"
+              d="M160 120 L160 250 L200 250"
             ></path>
-            <circle id="jB" class="dot sum" cx="160" cy="85" r="3"></circle>
+            <circle id="jB" class="dot sum" cx="160" cy="120" r="3"></circle>
 
-            <path id="wCin" class="wire sum" d="M60 200 L360 200"></path>
+            <!-- Cin -->
+            <path id="wCin" class="wire sum" d="M60 280 L360 280"></path>
             <path
               id="wCin_to_XOR2"
               class="wire sum fadeMid"
-              d="M360 200 L360 125 L440 125"
+              d="M360 280 L360 170 L440 170"
             ></path>
             <path
               id="wCin_to_AND2"
               class="wire sum fadeMid"
-              d="M360 200 L360 195 L440 195"
+              d="M360 280 L360 250 L440 250"
             ></path>
 
-            <path id="wS1" class="wire sum" d="M274 75 L330 75"></path>
-            <circle id="dS1" class="dot sum" cx="274" cy="75" r="4"></circle>
+            <!-- S1（XOR1出力） -->
+            <path id="wS1" class="wire sum" d="M274 105 L330 105"></path>
+            <circle id="dS1" class="dot sum" cx="274" cy="105" r="4"></circle>
             <path
               id="wS1_to_XOR2"
               class="wire sum fadeMid"
-              d="M330 75 L330 105 L440 105"
+              d="M330 105 L330 150 L440 150"
             ></path>
             <path
               id="wS1_to_AND2"
               class="wire sum fadeMid"
-              d="M330 75 L330 175 L440 175"
+              d="M330 105 L330 230 L440 230"
             ></path>
 
-            <!-- C1（AND1出力） -> OR in1（AND2を避けて上側へ迂回） -->
+            <!-- C1（AND1出力） -->
             <path
               id="wC1"
               class="wire carry"
-              d="M260 185 L340 185 L340 145 L610 145 L660 140"
+              d="M260 240 L340 240 L340 200 L610 200 L660 205"
             ></path>
-            <circle id="dC1" class="dot carry" cx="260" cy="185" r="4"></circle>
+            <circle id="dC1" class="dot carry" cx="260" cy="240" r="4"></circle>
 
-            <path id="wSum" class="wire sum" d="M514 115 L820 115"></path>
-            <circle id="dSum" class="dot sum" cx="514" cy="115" r="4"></circle>
+            <!-- Sum -->
+            <path id="wSum" class="wire sum" d="M514 160 L820 160"></path>
+            <circle id="dSum" class="dot sum" cx="514" cy="160" r="4"></circle>
 
+            <!-- C2（AND2出力） -->
             <path
               id="wC2"
               class="wire carry"
-              d="M500 185 L620 185 L660 160"
+              d="M500 240 L620 240 L660 225"
             ></path>
-            <circle id="dC2" class="dot carry" cx="500" cy="185" r="4"></circle>
+            <circle id="dC2" class="dot carry" cx="500" cy="240" r="4"></circle>
 
-            <path id="wCout" class="wire carry" d="M734 150 L820 150"></path>
+            <!-- Cout -->
+            <path id="wCout" class="wire carry" d="M734 215 L820 215"></path>
             <circle
               id="dCout"
               class="dot carry"
               cx="734"
-              cy="150"
+              cy="215"
               r="4"
             ></circle>
 
+            <!-- ゲート群（Yを下へ広げる） -->
             <g id="G_XOR1" class="gateGroup">
-              <use href="#GATE_XOR" transform="translate(200 45)" />
-              <text x="237" y="78" text-anchor="middle" font-size="12">
+              <use href="#GATE_XOR" transform="translate(200 75)" />
+              <text x="237" y="108" text-anchor="middle" font-size="12">
                 XOR
               </text>
             </g>
 
             <g id="G_AND1" class="gateGroup">
-              <use href="#GATE_AND" transform="translate(200 155)" />
-              <text x="230" y="190" text-anchor="middle" font-size="12">
+              <use href="#GATE_AND" transform="translate(200 210)" />
+              <text x="230" y="245" text-anchor="middle" font-size="12">
                 AND
               </text>
             </g>
 
             <g id="G_XOR2" class="gateGroup">
-              <use href="#GATE_XOR" transform="translate(440 85)" />
-              <text x="477" y="118" text-anchor="middle" font-size="12">
+              <use href="#GATE_XOR" transform="translate(440 130)" />
+              <text x="477" y="163" text-anchor="middle" font-size="12">
                 XOR
               </text>
             </g>
 
             <g id="G_AND2" class="gateGroup">
-              <use href="#GATE_AND" transform="translate(440 155)" />
-              <text x="470" y="190" text-anchor="middle" font-size="12">
+              <use href="#GATE_AND" transform="translate(440 210)" />
+              <text x="470" y="245" text-anchor="middle" font-size="12">
                 AND
               </text>
             </g>
 
             <g id="G_OR" class="gateGroup">
-              <use href="#GATE_OR" transform="translate(660 120)" />
-              <text x="697" y="153" text-anchor="middle" font-size="12">
+              <use href="#GATE_OR" transform="translate(660 185)" />
+              <text x="697" y="218" text-anchor="middle" font-size="12">
                 OR
               </text>
             </g>
 
-            <circle id="flow0" class="flowDot" cx="140" cy="65" r="4"></circle>
-            <circle id="flow1" class="flowDot" cx="300" cy="75" r="4"></circle>
-            <circle id="flow2" class="flowDot" cx="500" cy="115" r="4"></circle>
-            <circle id="flow3" class="flowDot" cx="710" cy="150" r="4"></circle>
+            <!-- 伝搬表示用 -->
+            <circle id="flow0" class="flowDot" cx="140" cy="90" r="4"></circle>
+            <circle id="flow1" class="flowDot" cx="300" cy="105" r="4"></circle>
+            <circle id="flow2" class="flowDot" cx="500" cy="160" r="4"></circle>
+            <circle id="flow3" class="flowDot" cx="710" cy="215" r="4"></circle>
 
-            <text x="220" y="242" font-size="12" fill="rgba(183,195,230,.9)">
+            <text x="220" y="325" font-size="12" fill="rgba(183,195,230,.9)">
               S1 = A ⊕ B / C1 = A ∧ B / C2 = S1 ∧ Cin
             </text>
           </svg>
@@ -752,8 +765,9 @@
             <p class="hint">青：Sum系 / 緑：Carry系</p>
           </div>
 
+          <!-- viewBoxを縦に拡張（260→340） -->
           <svg
-            viewBox="0 0 860 260"
+            viewBox="0 0 860 340"
             width="100%"
             height="auto"
             aria-label="半加算回路（MIL/ANSI系）"
@@ -786,74 +800,68 @@
               </g>
             </defs>
 
-            <text x="30" y="70" font-size="13">A</text>
-            <text x="30" y="90" font-size="13">B</text>
-            <text x="830" y="120" font-size="13">Sum</text>
-            <text x="830" y="190" font-size="13">Carry</text>
+            <text x="30" y="95" font-size="13">A</text>
+            <text x="30" y="125" font-size="13">B</text>
+            <text x="830" y="165" font-size="13">Sum</text>
+            <text x="830" y="255" font-size="13">Carry</text>
 
-            <!-- 入力ノード -->
-            <circle id="HdA" class="dot sum" cx="60" cy="65" r="4"></circle>
-            <circle id="HdB" class="dot sum" cx="60" cy="85" r="4"></circle>
+            <circle id="HdA" class="dot sum" cx="60" cy="90" r="4"></circle>
+            <circle id="HdB" class="dot sum" cx="60" cy="120" r="4"></circle>
 
-            <!-- A 分岐（XOR/AND） -->
-            <path id="HwA_L" class="wire sum" d="M60 65 L170 65"></path>
-            <path id="HwA_R" class="wire sum" d="M170 65 L220 65"></path>
+            <path id="HwA_L" class="wire sum" d="M60 90 L170 90"></path>
+            <path id="HwA_R" class="wire sum" d="M170 90 L220 90"></path>
             <path
               id="HwA_to_AND"
               class="wire sum fadeMid"
-              d="M170 65 L170 175 L220 175"
+              d="M170 90 L170 230 L220 230"
             ></path>
-            <circle id="HjA" class="dot sum" cx="170" cy="65" r="3"></circle>
+            <circle id="HjA" class="dot sum" cx="170" cy="90" r="3"></circle>
 
-            <!-- B 分岐（XOR/AND） -->
-            <path id="HwB_L" class="wire sum" d="M60 85 L180 85"></path>
-            <path id="HwB_R" class="wire sum" d="M180 85 L220 85"></path>
+            <path id="HwB_L" class="wire sum" d="M60 120 L180 120"></path>
+            <path id="HwB_R" class="wire sum" d="M180 120 L220 120"></path>
             <path
               id="HwB_to_AND"
               class="wire sum fadeMid"
-              d="M180 85 L180 195 L220 195"
+              d="M180 120 L180 250 L220 250"
             ></path>
-            <circle id="HjB" class="dot sum" cx="180" cy="85" r="3"></circle>
+            <circle id="HjB" class="dot sum" cx="180" cy="120" r="3"></circle>
 
-            <!-- XOR 出力 -->
-            <path id="HwSum" class="wire sum" d="M294 75 L820 115"></path>
-            <circle id="HdSum" class="dot sum" cx="294" cy="75" r="4"></circle>
+            <path id="HwSum" class="wire sum" d="M294 105 L820 160"></path>
+            <circle id="HdSum" class="dot sum" cx="294" cy="105" r="4"></circle>
 
-            <!-- AND 出力（Carry） -->
-            <path id="HwCarry" class="wire carry" d="M280 185 L820 185"></path>
+            <path id="HwCarry" class="wire carry" d="M280 240 L820 240"></path>
             <circle
               id="HdCarry"
               class="dot carry"
               cx="280"
-              cy="185"
+              cy="240"
               r="4"
             ></circle>
 
-            <!-- ゲート -->
             <g id="HG_XOR1" class="gateGroup">
-              <use href="#HGATE_XOR" transform="translate(220 45)" />
-              <text x="257" y="78" text-anchor="middle" font-size="12">
+              <use href="#HGATE_XOR" transform="translate(220 75)" />
+              <text x="257" y="108" text-anchor="middle" font-size="12">
                 XOR
               </text>
             </g>
 
             <g id="HG_AND1" class="gateGroup">
-              <use href="#HGATE_AND" transform="translate(220 155)" />
-              <text x="250" y="190" text-anchor="middle" font-size="12">
+              <use href="#HGATE_AND" transform="translate(220 210)" />
+              <text x="250" y="245" text-anchor="middle" font-size="12">
                 AND
               </text>
             </g>
 
-            <circle id="Hflow0" class="flowDot" cx="160" cy="65" r="4"></circle>
+            <circle id="Hflow0" class="flowDot" cx="160" cy="90" r="4"></circle>
             <circle
               id="Hflow1"
               class="flowDot"
               cx="300"
-              cy="185"
+              cy="240"
               r="4"
             ></circle>
 
-            <text x="300" y="242" font-size="12" fill="rgba(183,195,230,.9)">
+            <text x="300" y="325" font-size="12" fill="rgba(183,195,230,.9)">
               Sum = A ⊕ B / Carry = A ∧ B
             </text>
           </svg>
@@ -963,7 +971,6 @@
       bindDelay(dOR, dORv);
 
       // ===== モード =====
-      // "full" | "half"
       let mode = "full";
 
       function setMode(next) {
@@ -975,28 +982,23 @@
         wrapFull.classList.toggle("hidden", mode !== "full");
         wrapHalf.classList.toggle("hidden", mode !== "half");
 
-        // Cinの扱い
         rowCin.classList.toggle("hidden", mode !== "full");
         if (mode !== "full") {
-          elCin.checked = false; // 半加算はCin=0固定
+          elCin.checked = false;
         }
 
-        // 出力ラベル
         lblCarry.textContent = mode === "full" ? "Cout" : "Carry";
         lblTotal.textContent =
           mode === "full" ? "合計（A + B + Cin）" : "合計（A + B）";
 
-        // 真理値表ヘッダ
         thCin.classList.toggle("hidden", mode !== "full");
         thTotal.textContent = mode === "full" ? "A+B+Cin" : "A+B";
         thCarry.textContent = mode === "full" ? "Cout" : "Carry";
 
-        // 遅延UI（全加算だけ）
         rowDelayXOR2.classList.toggle("hidden", mode !== "full");
         rowDelayAND2.classList.toggle("hidden", mode !== "full");
         rowDelayOR.classList.toggle("hidden", mode !== "full");
 
-        // ステップ説明
         stepLegend.textContent =
           mode === "full" ? "0:入力 / 1:HA1 / 2:HA2 / 3:OR" : "0:入力 / 1:出力";
 
@@ -1118,8 +1120,6 @@
       function renderTruthTable() {
         ttBody.innerHTML = "";
         if (mode === "full") {
-          // 8行
-          let idx = 0;
           for (let A = 0; A <= 1; A++) {
             for (let B = 0; B <= 1; B++) {
               for (let Cin = 0; Cin <= 1; Cin++) {
@@ -1131,12 +1131,10 @@
                 <td>${r.Sum}</td><td>${r.Cout}</td><td>${A + B + Cin}</td>
               `;
                 ttBody.appendChild(tr);
-                idx++;
               }
             }
           }
         } else {
-          // 4行（Cin列は非表示にしている）
           for (let A = 0; A <= 1; A++) {
             for (let B = 0; B <= 1; B++) {
               const r = halfAdder(A, B);
@@ -1195,8 +1193,6 @@
       });
 
       function gateDelayMsForStep(step) {
-        // full: 0入力 / 1HA1 / 2HA2 / 3OR
-        // half: 0入力 / 1出力（XOR1/AND1）
         if (mode === "half") {
           if (step === 1)
             return Math.max(Number(dXOR1.value), Number(dAND1.value));
